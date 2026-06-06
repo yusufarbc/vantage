@@ -1,7 +1,7 @@
 package main
 
 /*
-gophish - Open-Source Phishing Framework
+vantage - Advanced Phishing & Security Operations Hub
 
 The MIT License (MIT)
 
@@ -41,7 +41,11 @@ import (
 	log "github.com/gophish/gophish/logger"
 	"github.com/gophish/gophish/middleware"
 	"github.com/gophish/gophish/models"
+	"github.com/gophish/gophish/notifier"
+	"github.com/gophish/gophish/scanner"
 	"github.com/gophish/gophish/webhook"
+	"github.com/gophish/gophish/worker"
+	"github.com/gophish/gophish/pkg/network"
 )
 
 const (
@@ -101,8 +105,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Setup the notifier
+	if conf.Notifications != nil {
+		notifier.Setup(conf.Notifications)
+	}
+
 	// Unlock any maillogs that may have been locked for processing
-	// when Gophish was last shutdown.
+	// when Vantage was last shutdown.
 	err = models.UnlockAllMailLogs()
 	if err != nil {
 		log.Fatal(err)
@@ -117,6 +126,9 @@ func main() {
 	adminServer := controllers.NewAdminServer(adminConfig, adminOptions...)
 	middleware.Store.Options.Secure = adminConfig.UseTLS
 
+	// Initialize scanner hub for WebSocket log streaming
+	scanner.InitScannerHub()
+
 	phishConfig := conf.PhishConf
 	phishServer := controllers.NewPhishingServer(phishConfig)
 
@@ -124,6 +136,16 @@ func main() {
 	if *mode == "admin" || *mode == "all" {
 		go adminServer.Start()
 		go imapMonitor.Start()
+		
+		// Start Vantage Background Worker
+		vantageWorker := worker.NewVantageWorker()
+		vantageWorker.Start()
+
+		// Start Chisel Reverse Tunnel Server (Vantage Tactical Network)
+		network.GlobalTunnelManager().Configure(conf.ChiselServerPort, "", "")
+		if err := network.GlobalTunnelManager().Start(); err != nil {
+			log.Errorf("Failed to start Chisel Tactical Network: %v", err)
+		}
 	}
 	if *mode == "phish" || *mode == "all" {
 		go phishServer.Start()
@@ -137,6 +159,7 @@ func main() {
 	if *mode == modeAdmin || *mode == modeAll {
 		adminServer.Shutdown()
 		imapMonitor.Shutdown()
+		network.GlobalTunnelManager().Stop()
 	}
 	if *mode == modePhish || *mode == modeAll {
 		phishServer.Shutdown()

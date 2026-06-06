@@ -19,6 +19,7 @@ import (
 	mid "github.com/gophish/gophish/middleware"
 	"github.com/gophish/gophish/middleware/ratelimit"
 	"github.com/gophish/gophish/models"
+	"github.com/gophish/gophish/scanner"
 	"github.com/gophish/gophish/util"
 	"github.com/gophish/gophish/worker"
 	"github.com/gorilla/csrf"
@@ -137,6 +138,10 @@ func (as *AdminServer) registerRoutes() {
 	router.HandleFunc("/users", mid.Use(as.UserManagement, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	router.HandleFunc("/webhooks", mid.Use(as.Webhooks, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	router.HandleFunc("/impersonate", mid.Use(as.Impersonate, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
+
+	// ── FINAL SCANNER ROUTER ───────────────────────────────────────────────────────
+	// Vantage security scanning subsystem routes
+	router.HandleFunc("/ws/scanner/logs", mid.Use(scanner.ScannerWSHandler, mid.RequireLogin))
 	// Create the API routes
 	api := api.NewServer(
 		api.WithWorker(as.worker),
@@ -173,12 +178,15 @@ func (as *AdminServer) registerRoutes() {
 }
 
 type templateParams struct {
-	Title        string
-	Flashes      []interface{}
-	User         models.User
-	Token        string
-	Version      string
-	ModifySystem bool
+	Title             string
+	Flashes           []interface{}
+	User              models.User
+	Token             string
+	Version           string
+	ModifySystem      bool
+	PDTools           []string
+	ChiselFingerprint string
+	Host              string
 }
 
 // newTemplateParams returns the default template parameters for a user and
@@ -187,20 +195,29 @@ func newTemplateParams(r *http.Request) templateParams {
 	user := ctx.Get(r, "user").(models.User)
 	session := ctx.Get(r, "session").(*sessions.Session)
 	modifySystem, _ := user.HasPermission(models.PermissionModifySystem)
-	return templateParams{
+	params := templateParams{
 		Token:        csrf.Token(r),
 		User:         user,
 		ModifySystem: modifySystem,
 		Version:      config.Version,
 		Flashes:      session.Flashes(),
+		PDTools: []string{
+			"subfinder", "httpx", "nuclei", "naabu",
+			"dnsx", "katana", "tlsx", "uncover",
+			"asnmap", "interactsh-client", "assetfinder", "cloudlist",
+		},
+		ChiselFingerprint: "SHA256:VantageTacticalSectorAccessKeyFingerprint",
+		Host:              r.Host,
 	}
+	return params
 }
 
 // Base handles the default path and template execution
 func (as *AdminServer) Base(w http.ResponseWriter, r *http.Request) {
+	// Render the new Vantage Tailwind dashboard
+	w.Header().Set("Content-Type", "text/html")
 	params := newTemplateParams(r)
-	params.Title = "Dashboard"
-	getTemplate(w, "dashboard").ExecuteTemplate(w, "base", params)
+	getTemplate(w, "vantage_dashboard").ExecuteTemplate(w, "base", params)
 }
 
 // Campaigns handles the default path and template execution
@@ -478,9 +495,18 @@ func (as *AdminServer) ResetPassword(w http.ResponseWriter, r *http.Request) {
 // TODO: Make this execute the template, too
 func getTemplate(w http.ResponseWriter, tmpl string) *template.Template {
 	templates := template.New("template")
+	// First parse the specific templates needed for the page
 	_, err := templates.ParseFiles("templates/base.html", "templates/nav.html", "templates/"+tmpl+".html", "templates/flashes.html")
 	if err != nil {
 		log.Error(err)
+	}
+	// Also parse all component templates in vantage subfolder.
+	// Use a separate error variable so a glob failure does not
+	// overwrite `err` and cause template.Must to panic when the
+	// primary templates parsed successfully.
+	_, globErr := templates.ParseGlob("templates/vantage/*.html")
+	if globErr != nil {
+		log.Warnf("Template parsing warning (vantage/): %v", globErr)
 	}
 	return template.Must(templates, err)
 }

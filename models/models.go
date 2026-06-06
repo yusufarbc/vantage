@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"bitbucket.org/liamstask/goose/lib/goose"
@@ -15,11 +16,12 @@ import (
 	mysql "github.com/go-sql-driver/mysql"
 	"github.com/gophish/gophish/auth"
 	"github.com/gophish/gophish/config"
-
 	log "github.com/gophish/gophish/logger"
 	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3" // Blank import needed to import sqlite3
+	_ "github.com/mattn/go-sqlite3"
 )
+
+
 
 var db *gorm.DB
 var conf *config.Config
@@ -89,7 +91,7 @@ func chooseDBDriver(name, openStr string) goose.DBDriver {
 		d.Import = "github.com/go-sql-driver/mysql"
 		d.Dialect = &goose.MySqlDialect{}
 
-	// Default database is sqlite3
+	// Default database is sqlite3 (mattn/go-sqlite3)
 	default:
 		d.Import = "github.com/mattn/go-sqlite3"
 		d.Dialect = &goose.Sqlite3Dialect{}
@@ -172,7 +174,18 @@ func Setup(c *config.Config) error {
 	// Open our database connection
 	i := 0
 	for {
-		db, err = gorm.Open(conf.DBName, conf.DBPath)
+		driverName := conf.DBName
+		dbPath := conf.DBPath
+		// Enforce WAL mode and busy timeout in connection string for SQLite for massive concurrency safety
+		if (driverName == "sqlite3" || driverName == "sqlite") && !strings.Contains(dbPath, "_journal_mode=WAL") {
+			if strings.Contains(dbPath, "?") {
+				dbPath += "&_journal_mode=WAL&_busy_timeout=5000"
+			} else {
+				dbPath += "?_journal_mode=WAL&_busy_timeout=5000"
+			}
+		}
+
+		db, err = gorm.Open(driverName, dbPath)
 		if err == nil {
 			break
 		}
@@ -185,15 +198,29 @@ func Setup(c *config.Config) error {
 		time.Sleep(5 * time.Second)
 	}
 	db.LogMode(false)
-	db.SetLogger(log.Logger)
-	db.DB().SetMaxOpenConns(1)
-	if err != nil {
-		log.Error(err)
-		return err
+	db.SetLogger(log.GormLogger{})
+
+	// SQLite Concurrency optimization: Finalize PRAGMA settings
+	if conf.DBName == "sqlite3" || conf.DBName == "sqlite" {
+		db.DB().SetMaxOpenConns(1)
+		db.Exec("PRAGMA journal_mode=WAL;")
+		db.Exec("PRAGMA synchronous=NORMAL;")
+		db.Exec("PRAGMA busy_timeout=30000;") // Increased to 30s for heavy PD tool loads
+		db.Exec("PRAGMA cache_size=-64000;") // 64MB cache
+		db.Exec("PRAGMA temp_store=MEMORY;")
+		db.Exec("PRAGMA mmap_size=268435456;") // 256MB MMAP for faster reads
+	} else {
+		db.DB().SetMaxOpenConns(25)
+		db.DB().SetMaxIdleConns(5)
+		db.DB().SetConnMaxLifetime(time.Hour)
 	}
 	// Migrate up to the latest version
 	err = goose.RunMigrationsOnDb(migrateConf, migrateConf.MigrationsDir, latest, db.DB())
 	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if err := db.AutoMigrate(&Scan{}, &Finding{}, &TargetAsset{}, &UserNetworkConfig{}).Error; err != nil {
 		log.Error(err)
 		return err
 	}

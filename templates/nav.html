@@ -1,47 +1,271 @@
 {{define "nav"}}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-sm-3 col-md-2 sidebar">
-            <ul class="nav nav-sidebar">
-                <li>
-                    <a href="/">Dashboard</a>
-                </li>
-                <li>
-                    <a href="/campaigns">Campaigns</a>
-                </li>
-                <li>
-                    <a href="/groups">Users &amp; Groups</a>
-                </li>
-                <li> <a href="/templates">Email Templates</a>
-                </li>
-                <li>
-                    <a href="/landing_pages">Landing Pages</a>
-                </li>
-                <li>
-                    <a href="/sending_profiles">Sending Profiles</a>
-                </li>
-                <li>
-                    <a href="/settings">Account Settings</span></a>
-                </li>
-                {{if .ModifySystem}}
-                <li>
-                    <a href="/users">User Management<span class="nav-badge badge pull-right">Admin</span></a>
-                </li>
-                <li>
-                    <a href="/webhooks">Webhooks<span class="nav-badge badge pull-right">Admin</span></a>
-                </li>
-                {{end}}
-                <li>
-                    <hr>
-                </li>
-                <li>
-                    <a href="https://docs.getgophish.com/user-guide/">User Guide</a>
-                </li>
-                <li>
-                    <a href="https://docs.getgophish.com/api-documentation/">API Documentation</a>
-                </li>
-            </ul>
+<style>
+    /* Explicit sidebar styling overrides to ensure high readability in both light & dark themes */
+    #sidebar {
+        background: linear-gradient(180deg, var(--v-sidebar-grad-start) 0%, var(--v-sidebar-grad-end) 100%) !important;
+        transition: background-color 0.3s ease, border-color 0.3s ease !important;
+    }
+
+    /* Light Theme Specific Rules (when .dark class is NOT present on html) */
+    html:not(.dark) #sidebar {
+        background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+        border-right-color: rgba(148, 163, 184, 0.25) !important;
+    }
+    html:not(.dark) .nav-brand-text {
+        background: linear-gradient(to right, #0f172a, #10b981) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+    }
+    html:not(.dark) .nav-section-label {
+        color: #475569 !important;
+        opacity: 0.85 !important;
+    }
+    html:not(.dark) .nav-group-toggle,
+    html:not(.dark) .nav-subitem,
+    html:not(.dark) .nav-item {
+        color: #334155 !important;
+    }
+    html:not(.dark) .nav-group-toggle:hover,
+    html:not(.dark) .nav-subitem:hover,
+    html:not(.dark) .nav-item:hover {
+        color: #10b981 !important;
+        background: rgba(16, 185, 129, 0.08) !important;
+    }
+    html:not(.dark) .nav-chevron {
+        color: #64748b !important;
+    }
+    html:not(.dark) .nav-group-toggle:hover .nav-chevron {
+        color: #10b981 !important;
+    }
+
+    /* Dark Theme Specific Rules (when .dark class IS present on html) */
+    html.dark #sidebar {
+        background: linear-gradient(180deg, #0f1419 0%, #0a0e12 100%) !important;
+        border-right-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    html.dark .nav-brand-text {
+        background: linear-gradient(to right, #ffffff, #00ff88) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+    }
+    html.dark .nav-section-label {
+        color: #94a3b8 !important;
+        opacity: 0.65 !important;
+    }
+    html.dark .nav-group-toggle,
+    html.dark .nav-subitem,
+    html.dark .nav-item {
+        color: #cbd5e1 !important;
+    }
+    html.dark .nav-group-toggle:hover,
+    html.dark .nav-subitem:hover,
+    html.dark .nav-item:hover {
+        color: #00ff88 !important;
+        background: rgba(0, 255, 136, 0.08) !important;
+    }
+    html.dark .nav-chevron {
+        color: #94a3b8 !important;
+    }
+    html.dark .nav-group-toggle:hover .nav-chevron {
+        color: #00ff88 !important;
+    }
+</style>
+<aside id="sidebar" 
+    x-data="{ 
+        expanded: localStorage.getItem('vantage_nav_expanded') 
+            ? JSON.parse(localStorage.getItem('vantage_nav_expanded')) 
+            : { recon: true, offensive: true, phishing: true, admin: false }
+    }"
+    x-init="$watch('expanded', value => localStorage.setItem('vantage_nav_expanded', JSON.stringify(value)))"
+    class="fixed inset-y-0 left-0 w-72 border-r border-vantage-border flex flex-col z-30 transition-all duration-300 lg:translate-x-0 -translate-x-full shadow-2xl sidebar-glass">
+    
+    <!-- Brand Header -->
+    <div class="h-16 flex items-center px-5 border-b border-vantage-border shrink-0">
+        <div class="flex items-center gap-3 w-full">
+            <div class="nav-logo-container">
+                <svg class="w-5 h-5 text-vantage-bg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <div class="flex flex-col flex-1">
+                <span class="nav-brand-text">Vantage</span>
+                <span class="text-[10px] font-mono text-vantage-accent/70 font-bold tracking-[0.15em] uppercase">Security Ops Hub</span>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Navigation Menu -->
+    <nav class="flex-1 overflow-y-auto py-4 space-y-0.5 custom-scrollbar">
+        
+        <!-- ═══ Dashboard (Top-Level CTA) ═══ -->
+        <a href="/" data-nav="dashboard" class="nav-dashboard">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span>Ops Dashboard</span>
+            </div>
+            <div class="w-1.5 h-1.5 rounded-full bg-vantage-accent animate-pulseGlow"></div>
+        </a>
+
+        <!-- ═══ RECONNAISSANCE ═══ -->
+        <div class="nav-section-label">Reconnaissance</div>
+        
+        <div class="space-y-0.5">
+            <button @click="expanded.recon = !expanded.recon" class="nav-group-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                    </svg>
+                    <span>Surface & Assets</span>
+                </div>
+                <svg :class="expanded.recon ? 'rotate-180' : ''" class="w-4 h-4 nav-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="expanded.recon" x-collapse>
+                <a href="/?tab=hosts" data-nav="hosts" class="nav-subitem">Target Catalog</a>
+                <a href="/?tab=osint" data-nav="osint" class="nav-subitem">Discovered Surface</a>
+                <a href="/?tab=interactsh" data-nav="interactsh" class="nav-subitem">Listeners & OOB</a>
+            </div>
+        </div>
+
+        <!-- ═══ OFFENSIVE OPS ═══ -->
+        <div class="nav-section-label">Offensive Ops</div>
+        
+        <div class="space-y-0.5">
+            <button @click="expanded.offensive = !expanded.offensive" class="nav-group-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    <span>Security Scans</span>
+                </div>
+                <svg :class="expanded.offensive ? 'rotate-180' : ''" class="w-4 h-4 nav-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="expanded.offensive" x-collapse>
+                <a href="/?tab=tasks" data-nav="tasks" class="nav-subitem">Active Operations</a>
+                <a href="/?tab=results" data-nav="results" class="nav-subitem">Vulnerability Findings</a>
+                <a href="/?tab=stress-tests" data-nav="stress-tests" class="nav-subitem">Resilience Tests</a>
+            </div>
+        </div>
+
+        <!-- ═══ SOCIAL ENGINEERING ═══ -->
+        <div class="nav-section-label">Social Engineering</div>
+        
+        <div class="space-y-0.5">
+            <button @click="expanded.phishing = !expanded.phishing" class="nav-group-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Tactical Phishing</span>
+                </div>
+                <svg :class="expanded.phishing ? 'rotate-180' : ''" class="w-4 h-4 nav-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="expanded.phishing" x-collapse>
+                <a href="/campaigns" data-nav="campaigns" class="nav-subitem">Engagements</a>
+                <a href="/groups" data-nav="groups" class="nav-subitem">Victim Groups</a>
+                <a href="/templates" data-nav="templates" class="nav-subitem">Email Payloads</a>
+                <a href="/landing_pages" data-nav="landing_pages" class="nav-subitem">Landing Pages</a>
+                <a href="/sending_profiles" data-nav="sending_profiles" class="nav-subitem">Sending Profiles</a>
+            </div>
+        </div>
+
+        <!-- ═══ ADMINISTRATION ═══ -->
+        <div class="nav-section-label">Administration</div>
+        
+        <div class="space-y-0.5">
+            <button @click="expanded.admin = !expanded.admin" class="nav-group-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span>System & Admin</span>
+                </div>
+                <svg :class="expanded.admin ? 'rotate-180' : ''" class="w-4 h-4 nav-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="expanded.admin" x-collapse>
+                <a href="/?tab=resilience-admin" data-nav="resilience-admin" class="nav-subitem flex items-center justify-between">
+                    <span>Vantage Agent</span>
+                    <div class="flex items-center relative">
+                        <span id="sidebar-agent-ping" class="absolute inline-flex h-3 w-3 rounded-full bg-emerald-500 opacity-0 animate-ping"></span>
+                        <span id="sidebar-agent-dot" class="relative inline-flex rounded-full h-2 w-2 bg-gray-600 transition-all duration-500"></span>
+                    </div>
+                </a>
+                {{if .ModifySystem}}
+                <a href="/users" data-nav="users" class="nav-subitem">User Management</a>
+                <a href="/webhooks" data-nav="webhooks" class="nav-subitem">Webhooks</a>
+                {{end}}
+                <a href="/?tab=notifications" data-nav="notifications" class="nav-subitem">Notifications</a>
+                <a href="/settings" data-nav="settings" class="nav-subitem">Settings</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Footer -->
+    <div class="px-5 py-3 border-t border-vantage-border shrink-0">
+        <div class="flex items-center justify-center">
+            <p class="text-[9px] text-vantage-text-dim/30 font-mono uppercase tracking-wider">Tactical Control Unit</p>
+        </div>
+    </div>
+</aside>
+
+<!-- Mobile Sidebar Overlay -->
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- Active Nav Highlighting Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() { highlightActiveNav(); });
+    window.addEventListener('popstate', function() { highlightActiveNav(); });
+
+    function highlightActiveNav() {
+        var path = window.location.pathname;
+        var params = new URLSearchParams(window.location.search);
+        var tab = params.get('tab');
+        var activeKey = '';
+
+        // Determine active key based on current URL
+        if (path === '/' && !tab) activeKey = 'dashboard';
+        else if (tab) activeKey = tab;
+        else if (path === '/campaigns') activeKey = 'campaigns';
+        else if (path.startsWith('/campaigns/')) activeKey = 'campaigns';
+        else if (path === '/groups') activeKey = 'groups';
+        else if (path === '/templates') activeKey = 'templates';
+        else if (path === '/landing_pages') activeKey = 'landing_pages';
+        else if (path === '/sending_profiles') activeKey = 'sending_profiles';
+        else if (path === '/users') activeKey = 'users';
+        else if (path === '/webhooks') activeKey = 'webhooks';
+        else if (path === '/settings') activeKey = 'settings';
+
+        // Clear all active states
+        document.querySelectorAll('.nav-item-active, .nav-subitem-active').forEach(function(el) {
+            el.classList.remove('nav-item-active', 'nav-subitem-active');
+        });
+
+        // Apply active state
+        var navEl = document.querySelector('[data-nav="' + activeKey + '"]');
+        if (navEl) {
+            if (navEl.classList.contains('nav-subitem')) {
+                navEl.classList.add('nav-subitem-active');
+            } else {
+                navEl.classList.add('nav-item-active');
+            }
+        }
+    }
+
+    function toggleSidebar() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('sidebar-open');
+        overlay.classList.toggle('active');
+    }
+</script>
+
 {{end}}

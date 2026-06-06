@@ -1,73 +1,392 @@
 {{ define "base" }}
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
+    <script>
+        // Init theme immediately to prevent FOIT
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Gophish - Phishing Toolkit">
-    <meta name="author" content="Jordan Wright (http://github.com/jordan-wright)">
-    <link rel="shortcut icon" href="/images/favicon.ico">
+    <meta name="description" content="Vantage Security Hub - Advanced Penetration Testing & Phishing Simulation Platform">
+    <meta name="author" content="Vantage Security">
+    <link rel="shortcut icon" href="/images/favicon.png">
 
-    <title>{{ .Title }} - Gophish</title>
+    <title>Vantage | {{ .Title }}</title>
 
-    <link href="/css/dist/gophish.css" rel="stylesheet" type="text/css">
-    <link href='https://fonts.googleapis.com/css?family=Roboto:700,500' rel='stylesheet' type='text/css'>
-    <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300,600,700' rel='stylesheet' type='text/css'>
+    <script>
+        window.VantageConfig = {
+            version: "{{.Version}}",
+            fingerprint: "{{.ChiselFingerprint}}",
+            csrf_token: "{{.Token}}"
+        };
+    </script>
+
+    <!-- UI Core -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/css/vantage_core.css">
+    
+    <!-- Alpine.js for interactive UI -->
+    <script defer src="https://unpkg.com/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+    
+    <!-- Legacy Support (Bootstrap fallback) -->
+    <link href="/css/dist/vantage.css" rel="stylesheet" type="text/css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        vantage: {
+                            bg: 'var(--v-bg)',
+                            sidebar: 'var(--v-sidebar)',
+                            card: 'var(--v-card)',
+                            border: 'var(--v-border)',
+                            accent: 'var(--v-accent)',
+                            critical: '#bc8cf2',
+                            high: '#f85149',
+                            medium: '#d29922',
+                            low: '#8b949e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: var(--v-bg);
+            color: var(--v-text);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        [x-cloak] { display: none !important; }
+        /* Override Legacy Styles */
+        .navbar { display: none !important; }
+        .sidebar { background: var(--v-sidebar) !important; border: none !important; }
+        .main { margin-left: 0 !important; width: 100% !important; padding: 0 !important; background: transparent !important; }
+        
+        /* Vantage Styled Components for Legacy Pages */
+        .btn-primary { 
+            background-color: var(--v-accent) !important; 
+            border: none !important; 
+            color: var(--v-bg) !important; 
+            font-weight: 700 !important; 
+            padding: 0.6rem 1.5rem !important; 
+            border-radius: 0.5rem !important;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            box-shadow: 0 4px 6px -1px var(--v-accent-glow);
+        }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .label { border-radius: 6px !important; padding: 0.25rem 0.6rem !important; font-weight: 600 !important; }
+        .label-success { background-color: var(--v-accent-glow) !important; color: var(--v-accent) !important; border: 1px solid var(--v-border) !important; }
+        
+        .table { background: var(--v-card) !important; border-collapse: separate !important; border-spacing: 0 !important; border: 1px solid var(--v-border) !important; border-radius: 0.75rem !important; overflow: hidden !important; box-shadow: var(--shadow-premium); }
+        .table thead th { border-bottom: 2px solid var(--v-border) !important; color: var(--v-text-dim) !important; text-transform: uppercase; font-size: 0.75rem !important; letter-spacing: 0.05em !important; padding: 1.25rem 1rem !important; font-weight: 700 !important; background: var(--v-sidebar) !important; }
+        .table td { border-top: 1px solid var(--v-border) !important; color: var(--v-text) !important; padding: 1rem !important; background: transparent !important; }
+        .table tr:hover td { background: var(--v-accent-glow) !important; }
+        
+        .modal-content { background: var(--v-panel) !important; border: 1px solid var(--v-border) !important; color: var(--v-text) !important; border-radius: 1rem !important; box-shadow: var(--shadow-premium) !important; }
+        .modal-header { border-bottom: 1px solid var(--v-border) !important; padding: 1.5rem !important; }
+        .modal-footer { border-top: 1px solid var(--v-border) !important; padding: 1.5rem !important; }
+        .form-control { background: var(--v-input-bg) !important; border: 1px solid var(--v-border) !important; color: var(--v-text) !important; border-radius: 0.5rem !important; padding: 0.75rem 1rem !important; }
+        .form-control:focus { border-color: var(--v-accent) !important; box-shadow: 0 0 0 2px var(--v-accent-glow) !important; }
+        
+        .panel { background: var(--v-panel) !important; border: 1px solid var(--v-border) !important; border-radius: 1rem !important; overflow: hidden; box-shadow: var(--shadow-premium); }
+        .panel-heading { background: var(--v-sidebar) !important; border-bottom: 1px solid var(--v-border) !important; color: var(--v-text) !important; font-weight: 700 !important; padding: 1.25rem 1.5rem !important; }
+    </style>
+
     <script>
         {{if .User}}
-    var user = {
-        api_key : {{ .User.ApiKey }},
-        username : {{ .User.Username }}
-    }
-    {{end}}
-    {{if .Token}}
-        var csrf_token = {{.Token}}
-    {{end}}
+        var user = {
+            api_key : "{{ .User.ApiKey }}",
+            username : "{{ .User.Username }}"
+        }
+        {{end}}
+        {{if .Token}}
+        var csrf_token = "{{.Token}}"
+        {{end}}
     </script>
 </head>
 
-<body>
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <img class="navbar-logo" src="/images/logo_inv_small.png" />
-                <a class="navbar-brand" href="/">&nbsp;gophish</a>
-            </div>
-            <div class="navbar-collapse collapse">
-                <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        {{if .User}}
-                        <div class="btn-group" id="navbar-dropdown">
-                            <a class="btn btn-primary" href="/settings"><i class="fa fa-user"></i> {{.User.Username}}</a>
-                            <a class="btn btn-primary dropdown-toggle" href="/logout">
-                                <i class="fa fa-sign-out"></i>
-                            </a>
+<body class="antialiased">
+    <div class="flex">
+        <!-- Unified Sidebar -->
+        {{template "nav" .}}
+
+        <!-- Main Content Area -->
+        <div class="flex-1 lg:ml-72 flex flex-col min-h-screen">
+            <!-- Global Header -->
+            <header class="h-14 bg-vantage-header-bg border-b border-vantage-border px-6 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md">
+                <div class="flex items-center gap-3">
+                    <!-- Mobile Hamburger -->
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 -ml-2 rounded-lg text-vantage-text-dim hover:text-vantage-text hover:bg-vantage-card transition-colors" aria-label="Toggle menu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <h1 class="text-lg font-black tracking-tight text-vantage-text uppercase italic">
+                        <span class="text-vantage-accent">V</span>antage <span class="text-vantage-text-dim/40">|</span> <span id="tab-title" class="text-vantage-text/80">{{ .Title }}</span>
+                    </h1>
+                    <!-- Production Environment Badge -->
+                    <span id="prod-env-badge"
+                          class="hidden items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border"
+                          style="background:rgba(248,81,73,0.12);border-color:rgba(248,81,73,0.4);color:#f85149;">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                        PROD
+                    </span>
+                </div>
+                <div class="flex items-center gap-6">
+                    <!-- Theme Toggle -->
+                    <button x-data="{ 
+                            theme: localStorage.getItem('theme') || 'dark',
+                            toggle() {
+                                this.theme = this.theme === 'dark' ? 'light' : 'dark';
+                                localStorage.setItem('theme', this.theme);
+                                if (this.theme === 'dark') document.documentElement.classList.add('dark');
+                                else document.documentElement.classList.remove('dark');
+                                window.dispatchEvent(new CustomEvent('theme-changed', { detail: this.theme }));
+                            }
+                        }"
+                        @click="toggle()"
+                        class="p-2 rounded-lg bg-vantage-card border border-vantage-border text-vantage-text-dim hover:text-vantage-accent hover:border-vantage-accent/30 transition-all active:scale-90"
+                        title="Toggle Theme">
+                        <template x-if="theme === 'dark'">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707.707m12.728 0l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                        </template>
+                        <template x-if="theme === 'light'">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        </template>
+                    </button>
+
+                    <div class="flex items-center gap-2 pr-4 border-r border-vantage-border">
+                        <span id="tactical-net-dot" class="w-2 h-2 rounded-full bg-vantage-accent shadow-[0_0_8px_var(--v-accent)]"></span>
+                        <span id="tactical-net-text" class="text-xs font-bold text-vantage-text-dim uppercase tracking-wider hidden sm:inline">Network Active</span>
+                    </div>
+                    {{if .User}}
+                        <div class="flex flex-col items-end">
+                            <span class="text-sm font-bold text-vantage-text">{{.User.Username}}</span>
+                            <span class="text-[10px] text-vantage-accent font-bold uppercase tracking-wider">{{if .ModifySystem}}Admin{{else}}Operator{{end}}</span>
                         </div>
-                        {{else}}
-                        <a href="/login">
-                            <button type="button" class="btn btn-primary">Login</button>
+                        <a href="/logout" class="w-8 h-8 rounded-lg bg-vantage-card border border-vantage-border flex items-center justify-center hover:bg-white/5 transition-colors text-gray-400 hover:text-white" title="Logout">
+                            <i class="fa fa-sign-out"></i>
                         </a>
-                        {{end}}
-                    </li>
-                </ul>
-            </div>
+                    {{end}}
+                </div>
+            </header>
+
+            <!-- Page Body -->
+            <main class="flex-1 p-8">
+                {{template "body" .}}
+            </main>
         </div>
     </div>
-    {{template "nav" .}}
-    {{template "body" .}}
-    <!-- Placed at the end of the document so the pages load faster -->
-    <script src="/js/dist/vendor.min.js"></script>
-    <script src="/js/dist/app/gophish.min.js"></script>
-    {{template "scripts" .}}
-</body>
 
+    <!-- Toast Notification System -->
+    <div x-data="{ 
+            toasts: [],
+            addToast(message, type = 'info') {
+                const id = Date.now();
+                this.toasts.push({ id, message, type });
+                setTimeout(() => {
+                    this.toasts = this.toasts.filter(t => t.id !== id);
+                }, 5000);
+            }
+        }"
+        @toast.window="addToast($event.detail.message, $event.detail.type)"
+        class="fixed bottom-5 right-5 z-[100] flex flex-col gap-3 w-80">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-show="true" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform translate-y-2"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 transform translate-y-0"
+                 x-transition:leave-end="opacity-0 transform translate-y-2"
+                 :class="{
+                    'bg-vantage-accent/20 border-vantage-accent text-vantage-accent': toast.type === 'success',
+                    'bg-red-500/20 border-red-500 text-red-400': toast.type === 'error',
+                    'bg-blue-500/20 border-blue-500 text-blue-400': toast.type === 'info'
+                 }"
+                 class="p-4 rounded-xl border backdrop-blur-md shadow-2xl flex items-center justify-between group">
+                <div class="flex items-center gap-3">
+                    <template x-if="toast.type === 'success'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    </template>
+                    <template x-if="toast.type === 'error'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </template>
+                    <span class="text-xs font-bold" x-text="toast.message"></span>
+                </div>
+                <button @click="toasts = toasts.filter(t => t.id !== toast.id)" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </template>
+    </div>
+
+    <!-- Background Scripts -->
+    <script src="/js/dist/vendor.min.js"></script>
+    <script src="/js/dist/app/vantage.min.js"></script>
+    {{template "scripts" .}}
+
+    <script>
+    // ── Production Environment Badge ────────────────────────────────────────
+    // Show badge only when running behind Caddy (X-Forwarded-Proto: https)
+    // or when the explicit VANTAGE_ENV cookie/header is set by deploy.sh.
+    (function () {
+        var isProd = window.location.protocol === 'https:'
+            || document.cookie.split(';').some(function(c) {
+                return c.trim().startsWith('vantage_env=production');
+            });
+        if (isProd) {
+            var badge = document.getElementById('prod-env-badge');
+            if (badge) badge.classList.replace('hidden', 'flex');
+        }
+    })();
+
+    // ── Global Toast Dispatcher ──────────────────────────────────────────
+    window.showToast = function(messageOrTitle, typeOrMessage, typeIfThree) {
+        var message = messageOrTitle;
+        var type = typeOrMessage || 'info';
+        if (typeIfThree) {
+            message = messageOrTitle + ': ' + typeOrMessage;
+            type = typeIfThree;
+        } else if (typeOrMessage && typeOrMessage !== 'success' && typeOrMessage !== 'error' && typeOrMessage !== 'info') {
+            message = messageOrTitle + ': ' + typeOrMessage;
+            type = 'info';
+        }
+        window.dispatchEvent(new CustomEvent('toast', {
+            detail: { message: message, type: type }
+        }));
+    };
+
+    // Alias secureFetch to fetch so it is globally available and has CSRF token automatically injected
+    window.secureFetch = window.fetch;
+
+    // ── Global AJAX Error Interceptor ───────────────────────────────────────
+    // Wraps window.fetch and $.ajax (if jQuery is present) so that ANY 4xx/5xx
+    // response from the Vantage backend surfaces a red Toast — no silent fails.
+    (function () {
+        function dispatchErrorToast(message) {
+            window.showToast(message, 'error');
+        }
+
+        // ── Fetch API wrapper ──────────────────────────────────────────────
+        var _origFetch = window.fetch;
+        window.fetch = function (input, init) {
+            // Support both string and Request object
+            var url = typeof input === 'string' ? input : input.url;
+            
+            // Only inject for our own API
+            if (url && (url.startsWith('/api/') || url.startsWith(window.location.origin + '/api/'))) {
+                init = init || {};
+                var headers = {};
+                
+                // Extract existing headers if it's a Headers object or a plain object
+                if (init.headers) {
+                    if (init.headers instanceof Headers) {
+                        init.headers.forEach((v, k) => { headers[k] = v; });
+                    } else {
+                        headers = Object.assign({}, init.headers);
+                    }
+                }
+                
+                // Inject credentials if available
+                if (typeof csrf_token !== 'undefined' && !headers['X-CSRF-Token']) headers['X-CSRF-Token'] = csrf_token;
+                if (typeof user !== 'undefined' && user.api_key && !headers['Authorization']) headers['Authorization'] = user.api_key;
+                
+                init.headers = headers;
+            }
+
+            return _origFetch.call(this, input, init).then(function (response) {
+                if (!response.ok && (response.status >= 400)) {
+                    // Clone so the caller can still read the body
+                    response.clone().json().then(function (body) {
+                        var msg = (body && body.message)
+                            ? body.message
+                            : 'Server error ' + response.status;
+                        dispatchErrorToast('\u26a0\ufe0f ' + msg);
+                    }).catch(function () {
+                        dispatchErrorToast('\u26a0\ufe0f HTTP ' + response.status + ' — ' + response.statusText);
+                    });
+                }
+                return response;
+            }).catch(function (err) {
+                // Suppress toast for aborted requests
+                if (err.name !== 'AbortError') {
+                    dispatchErrorToast('\u26a0\ufe0f Network error: ' + err.message);
+                }
+                return Promise.reject(err);
+            });
+        };
+
+
+        // ── jQuery $.ajax global handler (used by legacy Gophish pages) ────
+        if (window.jQuery) {
+            jQuery(document).ajaxError(function (event, jqXHR, settings, thrownError) {
+                var status = jqXHR.status;
+                if (status >= 400) {
+                    var body = {};
+                    try { body = JSON.parse(jqXHR.responseText); } catch (e) {}
+                    var msg = (body && body.message)
+                        ? body.message
+                        : ('HTTP ' + status + ' — ' + (thrownError || jqXHR.statusText));
+                    dispatchErrorToast('\u26a0\ufe0f ' + msg);
+                }
+            });
+        }
+    })();
+
+    // ── Dynamic Status Polling ──────────────────────────────────────────────
+    (function () {
+        function updateStatus() {
+            fetch('/api/health')
+                .then(res => res.json())
+                .then(data => {
+                    // 1. Tactical Network Status
+                    const netDot = document.getElementById('tactical-net-dot');
+                    const netText = document.getElementById('tactical-net-text');
+                    if (netDot && netText) {
+                        const isUp = data.network && data.network.active_interface && data.network.active_interface.startsWith('tun');
+                        if (isUp || data.network.tunnel_connected) {
+                            netDot.className = 'w-3 h-3 rounded-full bg-vantage-accent shadow-[0_0_10px_var(--v-accent)]';
+                            netText.innerText = 'Network Active';
+                        } else {
+                            netDot.className = 'w-3 h-3 rounded-full bg-gray-500 shadow-none';
+                            netText.innerText = 'Network Idle';
+                        }
+                    }
+                })
+                .catch(() => {
+                    const netDot = document.getElementById('tactical-net-dot');
+                    const netText = document.getElementById('tactical-net-text');
+                    if (netDot && netText) {
+                        netDot.className = 'w-3 h-3 rounded-full bg-red-500 shadow-none';
+                        netText.innerText = 'Network Error';
+                    }
+                });
+        }
+        setInterval(updateStatus, 10000); // Poll every 10s
+        updateStatus(); // Initial check
+    })();
+    </script>
+</body>
 </html>
 {{ end }}

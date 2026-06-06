@@ -86,7 +86,41 @@ func (as *Server) registerRoutes() {
 	router.HandleFunc("/webhooks/", mid.Use(as.Webhooks, mid.RequirePermission(models.PermissionModifySystem)))
 	router.HandleFunc("/webhooks/{id:[0-9]+}/validate", mid.Use(as.ValidateWebhook, mid.RequirePermission(models.PermissionModifySystem)))
 	router.HandleFunc("/webhooks/{id:[0-9]+}", mid.Use(as.Webhook, mid.RequirePermission(models.PermissionModifySystem)))
-	as.handler = router
+
+	// ── Scanner / Vulnerability Management Routes ────────────────────────────────
+	router.HandleFunc("/scanner/start", as.StartScan).Methods("POST")
+	router.HandleFunc("/scanner/status", as.ScanStatus).Methods("GET")
+	router.HandleFunc("/scanner/findings", as.GetFindings).Methods("GET")
+	router.HandleFunc("/scanner/findings/{id:[0-9]+}", as.DeleteFinding).Methods("DELETE")
+	router.HandleFunc("/scanner/findings", as.ClearFindings).Methods("DELETE")
+	router.HandleFunc("/scanner/stats", as.GetStats).Methods("GET")
+	router.HandleFunc("/scanner/tasks", as.ListTasks).Methods("GET")
+	router.HandleFunc("/scanner/tasks/{id:[0-9]+}", as.DeleteScanTask).Methods("DELETE")
+	router.HandleFunc("/scanner/stop/{id:[0-9]+}", as.StopScanHandler).Methods("POST")
+	router.HandleFunc("/scanner/stress/start", as.StartStressTest).Methods("POST")
+
+	// ── Vantage v1 API — Network & Tunnel Management ──────────────────────────
+	// Versioned subrouter: /api/v1/
+	// Uses the same auth middleware (RequireAPIKey) as the parent router.
+	v1 := root.PathPrefix("/api/v1/").Subrouter()
+	v1.Use(mid.RequireAPIKey)
+	v1.HandleFunc("/interfaces", as.ListInterfaces).Methods("GET")
+	v1.HandleFunc("/tunnel/status", as.TunnelStatus).Methods("GET")
+	v1.HandleFunc("/tunnel/start", as.StartTunnelServer).Methods("POST")
+	v1.HandleFunc("/tunnel/stop", as.StopTunnelServer).Methods("POST")
+	v1.HandleFunc("/tunnel/route", as.AddRoute).Methods("POST")
+	v1.HandleFunc("/targets", as.ListTargets).Methods("GET")
+	v1.HandleFunc("/targets/import", as.ImportTargets).Methods("POST")
+	v1.HandleFunc("/mail/queue", as.MailQueueSummary).Methods("GET")
+	v1.HandleFunc("/scanner/report/{id:[0-9]+}", as.DownloadScanReport).Methods("GET")
+	v1.HandleFunc("/settings/notifications", as.GetNotificationSettings).Methods("GET")
+	v1.HandleFunc("/settings/notifications", as.PostNotificationSettings).Methods("POST")
+
+	// ── Health Check (unauthenticated — for external monitoring) ─────────────
+	// Registered on the root router so it bypasses RequireAPIKey middleware.
+	root.HandleFunc("/api/health", as.HealthCheck).Methods("GET")
+
+	as.handler = root
 }
 
 func (as *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
