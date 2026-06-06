@@ -1,6 +1,6 @@
 # Vantage (Gophish Security Operations Hub)
 
-**Vantage** is an advanced fork of **Gophish**, transformed into a unified Security Operations Hub. It integrates industry-standard reconnaissance and vulnerability scanning tools directly into the phishing simulation workflow.
+**Vantage** is an advanced fork of **Gophish**, transformed into a unified Security Operations Hub. It acts as a powerful, asynchronous Go-based CLI wrapper and orchestrator for **ProjectDiscovery** tools, allowing security teams to manage phishing simulations alongside automated network scanning.
 
 ---
 
@@ -17,7 +17,7 @@
 ## 🚀 Key Features
 
 *   **Unified Dashboard**: Manage phishing campaigns and security scans from a single modern UI.
-*   **Vulnerability Scanning**: Direct integration with **ProjectDiscovery** tools (Nuclei, Subfinder, HTTPx, etc.).
+*   **ProjectDiscovery CLI Wrapper**: Fully integrates and orchestrates ProjectDiscovery tools (**Nuclei**, **Subfinder**, **HTTPx**, **Naabu**, **DNSx**, **Katana**, **TLSx**, **ASNMap**, **Uncover**) as an asynchronous scan engine.
 *   **Reverse L3 Tunneling**: Perform internal network scans through a secure Chisel-based reverse tunnel.
 *   **Real-time Insights Discovery**: WebSocket-based live scan logs and campaign performance tracking.
 *   **Enterprise-Ready Deployment**: Orchestrated via Docker Compose with Caddy (HTTPS) and Postfix integration.
