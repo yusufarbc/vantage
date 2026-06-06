@@ -32,35 +32,54 @@ For detailed setup and usage instructions, please refer to the following guides:
 *   🚀 **[Deployment & Operations Guide](doc/DEPLOYMENT_GUIDE.md)** - Step-by-step VPS/Server deployment.
 *   🌐 **[Reverse L3 Tunnel Guide](doc/REVERSE_TUNNEL_GUIDE.md)** - **[NEW]** Setup and usage for internal scanning.
 
-## 🌐 Scanning Architecture (VPS & Reverse Tunnel Agent)
+## 🌐 Platform Architecture (Phishing Simulation & Scanning Engine)
 
-Vantage allows scanning internal networks without complex VPN setups by leveraging a secure reverse tunnel. Below is the operational workflow for running scans on internal target assets using an agent deployed inside the corporate network:
+Vantage merges the **Gophish oltalama (phishing) simulation workflow** with an **asynchronous ProjectDiscovery scanning engine** that routes internal traffic through a secure Chisel-based reverse L3 tunnel. Below is the comprehensive platform architecture and network flow:
 
 ```mermaid
 graph TD
     subgraph Cloud / VPS
-        Caddy["Caddy Reverse Proxy (Port 443)"]
-        Core["Vantage Core (Docker Container)"]
-        Scanner["ProjectDiscovery Scanner Engine (Nuclei, Naabu, etc.)"]
-        ChiselServer["Chisel Server (Port 9090)"]
+        Caddy["Caddy Reverse Proxy - HTTPS / Port 443"]
+        Core["Vantage Core - Docker Container"]
+        
+        subgraph Vantage Engines
+            PhishEngine["Phishing Simulation Engine - Gophish"]
+            ScanEngine["ProjectDiscovery Scanner Engine - Nuclei, Naabu, etc."]
+        end
+
+        Postfix["Postfix SMTP Container"]
+        ChiselServer["Chisel Server - Port 9090"]
     end
 
-    subgraph Internal Corporate Network
-        Agent["Vantage Chisel Agent (Endpoint)"]
-        InternalAssets["Internal Target Assets (Active Directory, Local Servers, Database)"]
+    subgraph Public Internet - Phishing Targets
+        Victims["Target Recipients and Phishing Victims"]
     end
 
-    %% Routing Flow
-    Agent -->|1. Initiates outbound TCP/WS connection| Caddy
-    Caddy -->|2. Proxy connection| ChiselServer
-    ChiselServer <-->|3. Establishes Secure L3 Tunnel (tun0)| Agent
+    subgraph Internal Corporate Network - Scanning Targets
+        Agent["Vantage Chisel Agent - Endpoint"]
+        InternalAssets["Internal Corporate Assets - Active Directory, Servers"]
+    end
 
-    %% Scanning Flow
-    Scanner -->|4. Directs scan to internal subnet (e.g. 192.168.1.0/24)| ChiselServer
-    ChiselServer -->|5. Routes packets through tun0| Agent
-    Agent -->|6. Performs scan requests locally| InternalAssets
-    InternalAssets -->|7. Returns response packets| Agent
-    Agent -->|8. Forwards results back through tunnel| Scanner
+    %% Infrastructure Routing
+    Caddy -->|Proxy Admin and Phishing Landing Pages| Core
+    Core --- PhishEngine
+    Core --- ScanEngine
+    
+    %% Phishing Workflow
+    PhishEngine -->|1. Triggers email delivery| Postfix
+    Postfix -->|2. Sends phishing emails| Victims
+    Victims -->|3. Accesses oltalama pages / inputs credentials| Caddy
+
+    %% Scanning Workflow - Reverse Tunnel
+    Agent -->|4. Initiates outbound Chisel connection| Caddy
+    Caddy -->|5. Proxy tunnel connection| ChiselServer
+    ChiselServer ---|6. Establishes Secure L3 Tunnel tun0| Agent
+    
+    ScanEngine -->|7. Directs scan to internal subnet| ChiselServer
+    ChiselServer -->|8. Routes packets via tun0| Agent
+    Agent -->|9. Performs local scan requests| InternalAssets
+    InternalAssets -->|10. Returns responses| Agent
+    Agent -->|11. Returns scan results back| ScanEngine
 ```
 
 ---
