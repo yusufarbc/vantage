@@ -1,7 +1,5 @@
 # Vantage (Gophish Security Operations Hub)
 
-![Vantage Logo](https://raw.githubusercontent.com/gophish/gophish/master/static/images/gophish_purple.png)
-
 **Vantage** is an advanced fork of **Gophish**, transformed into a unified Security Operations Hub. It integrates industry-standard reconnaissance and vulnerability scanning tools directly into the phishing simulation workflow.
 
 ---
