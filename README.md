@@ -32,6 +32,37 @@ For detailed setup and usage instructions, please refer to the following guides:
 *   🚀 **[Deployment & Operations Guide](doc/DEPLOYMENT_GUIDE.md)** - Step-by-step VPS/Server deployment.
 *   🌐 **[Reverse L3 Tunnel Guide](doc/REVERSE_TUNNEL_GUIDE.md)** - **[NEW]** Setup and usage for internal scanning.
 
+## 🌐 Scanning Architecture (VPS & Reverse Tunnel Agent)
+
+Vantage allows scanning internal networks without complex VPN setups by leveraging a secure reverse tunnel. Below is the operational workflow for running scans on internal target assets using an agent deployed inside the corporate network:
+
+```mermaid
+graph TD
+    subgraph Cloud / VPS
+        Caddy["Caddy Reverse Proxy (Port 443)"]
+        Core["Vantage Core (Docker Container)"]
+        Scanner["ProjectDiscovery Scanner Engine (Nuclei, Naabu, etc.)"]
+        ChiselServer["Chisel Server (Port 9090)"]
+    end
+
+    subgraph Internal Corporate Network
+        Agent["Vantage Chisel Agent (Endpoint)"]
+        InternalAssets["Internal Target Assets (Active Directory, Local Servers, Database)"]
+    end
+
+    %% Routing Flow
+    Agent -->|1. Initiates outbound TCP/WS connection| Caddy
+    Caddy -->|2. Proxy connection| ChiselServer
+    ChiselServer <-->|3. Establishes Secure L3 Tunnel (tun0)| Agent
+
+    %% Scanning Flow
+    Scanner -->|4. Directs scan to internal subnet (e.g. 192.168.1.0/24)| ChiselServer
+    ChiselServer -->|5. Routes packets through tun0| Agent
+    Agent -->|6. Performs scan requests locally| InternalAssets
+    InternalAssets -->|7. Returns response packets| Agent
+    Agent -->|8. Forwards results back through tunnel| Scanner
+```
+
 ---
 
 ## 🏗️ Quick Start
