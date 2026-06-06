@@ -34,60 +34,53 @@ For detailed setup and usage instructions, please refer to the following guides:
 
 ## 🌐 Platform Architecture (Phishing & Scanning Workflows)
 
-Vantage operates from a **VPS with a Static IP bound to a domain via DNS records** (essential for phishing oltalama delivery). It supports three main workflows:
-1. **Phishing Simulations (VPS-hosted)**: Orchestrated on the VPS, sending oltalama emails to public targets via the local Postfix SMTP container and receiving landing page interactions via Caddy.
-2. **External Scanning (Direct from VPS)**: ProjectDiscovery scanner tools scan public internet assets directly from the VPS.
-3. **Internal Scanning (Via Reverse L3 Tunnel Agent)**: Scan packets are routed from the VPS through a secure Chisel tunnel (`tun0` interface) to an agent running inside the corporate network to scan internal assets.
+Vantage operates from a **VPS with a Static IP bound to a domain via DNS records** (essential for phishing/oltalama delivery). It supports three main workflows:
+
+1. **External Scanning (Direct from VPS)**: Scans public internet assets directly from the VPS.
+2. **Internal Scanning (Compromised Endpoint Simulation)**: Scans are routed from the VPS through a secure Chisel reverse tunnel (`tun0`) to the Vantage Agent running on a compromised endpoint inside the corporate network.
+3. **Phishing Simulation**: Sends oltalama emails from the VPS to corporate users via Postfix SMTP, driving engagement tracking back to the dashboard.
 
 ```mermaid
 graph TD
-    subgraph Cloud / VPS - Static IP bound to DNS Domain
-        Caddy["Caddy Reverse Proxy - HTTPS / Port 443"]
-        Core["Vantage Core - Docker Container"]
-        
-        subgraph Vantage Engines
-            PhishEngine["Phishing Simulation Engine - Gophish"]
-            ScanEngine["ProjectDiscovery Scanner Engine"]
-        end
+    %% Styling
+    classDef vps fill:#eef2ff,stroke:#4f46e5,stroke-width:2px,color:#1e1b4b;
+    classDef ext fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#7c2d12;
+    classDef internal fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#14532d;
 
-        Postfix["Postfix SMTP Container"]
-        ChiselServer["Chisel Server - Port 9090"]
+    %% Nodes & Subgraphs
+    subgraph VPS ["Vantage VPS (Cloud Deployment)"]
+        Vantage["Vantage Hub Core<br>(Scanner & Phishing Engine)"]:::vps
+        SMTP["Postfix SMTP Container"]:::vps
     end
 
-    subgraph Public Internet - Phishing & External Scan Targets
-        Victims["Target Recipients and Phishing Victims"]
-        PublicAssets["External Assets - Domains, Public IPs, Web Apps"]
+    subgraph ExtNet ["Public Internet (External Zone)"]
+        ExtAssets["External Assets<br>(Public IPs, Domains, Web Apps)"]:::ext
     end
 
-    subgraph Internal Corporate Network - Scanning Targets
-        Agent["Vantage Chisel Agent - Endpoint"]
-        InternalAssets["Internal Corporate Assets - Active Directory, Local Servers"]
+    subgraph Corporate ["Corporate Network (Internal Zone)"]
+        Agent["Vantage Chisel Agent<br>(Compromised Endpoint Sim.)"]:::internal
+        IntAssets["Internal Corporate Assets<br>(Active Directory, Local Servers)"]:::internal
+        Users["Corporate Users<br>(Phishing Targets)"]:::internal
     end
 
-    %% Infrastructure Routing
-    Caddy -->|Proxy Admin and Phishing Landing Pages| Core
-    Core --- PhishEngine
-    Core --- ScanEngine
+    %% Workflows
     
-    %% Phishing Workflow
-    PhishEngine -->|1a. Triggers email delivery| Postfix
-    Postfix -->|1b. Sends phishing emails via VPS Static IP| Victims
-    Victims -->|1c. Accesses landing pages and inputs credentials via Domain DNS A Record| Caddy
-
-    %% External Scanning Workflow
-    ScanEngine -->|2a. Direct external scan requests| PublicAssets
-    PublicAssets -->|2b. Returns scan responses directly to VPS| ScanEngine
-
-    %% Internal Scanning Workflow - Reverse Tunnel
-    Agent -->|3a. Initiates outbound Chisel connection| Caddy
-    Caddy -->|3b. Proxy tunnel connection| ChiselServer
-    ChiselServer <-->|3c. Establishes Secure L3 Tunnel tun0| Agent
+    %% 1. External Scanning
+    Vantage -->|1. Direct External Scan| ExtAssets
     
-    ScanEngine -->|3d. Directs internal scan to local subnet| ChiselServer
-    ChiselServer -->|3e. Routes packets via tun0| Agent
-    Agent -->|3f. Performs scan requests locally| InternalAssets
-    InternalAssets -->|3g. Returns responses| Agent
-    Agent -->|3h. Forwards results back through tunnel| ScanEngine
+    %% 2. Internal Scanning (Compromised Endpoint Simulation)
+    Vantage <-->|2a. Reverse Chisel Tunnel| Agent
+    Agent -->|2b. Local Subnet Scan| IntAssets
+
+    %% 3. Phishing Simulation
+    Vantage -->|3a. Trigger Email Campaign| SMTP
+    SMTP -->|3b. Phishing Emails via SMTP| Users
+    Users -.->|3c. Phishing Interactions via HTTPS| Vantage
+
+    %% Group styling
+    style VPS fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px
+    style ExtNet fill:#fffbeb,stroke:#fef3c7,stroke-width:2px
+    style Corporate fill:#f0fdf4,stroke:#bbf7d0,stroke-width:2px
 ```
 
 ---
