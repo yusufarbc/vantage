@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/gophish/gophish/models"
+	"github.com/yusufarbc/vantage/models"
 )
 
 // ── Tool Interface ────────────────────────────────────────────────────────────

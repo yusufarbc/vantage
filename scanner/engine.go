@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/pkg/network"
+	"github.com/yusufarbc/vantage/logger"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/pkg/network"
 	"github.com/gorilla/websocket"
 )
 

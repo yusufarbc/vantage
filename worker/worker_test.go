@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gophish/gophish/config"
-	"github.com/gophish/gophish/mailer"
-	"github.com/gophish/gophish/models"
+	"github.com/yusufarbc/vantage/config"
+	"github.com/yusufarbc/vantage/mailer"
+	"github.com/yusufarbc/vantage/models"
 )
 
 type logMailer struct {

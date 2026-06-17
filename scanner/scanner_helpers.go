@@ -5,8 +5,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/pkg/network"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/pkg/network"
 )
 
 // buildScannerArgs constructs the CLI argument slice for a given PD tool.

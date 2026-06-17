@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/notifier"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/notifier"
 )
 
 // DefaultExecutor implements ToolExecutor with hardening and OOM-safe streaming.
