@@ -3,9 +3,9 @@ package worker
 import (
 	"time"
 
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/scanner"
+	log "github.com/yusufarbc/vantage/logger"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/scanner"
 )
 
 // VantageWorker handles periodic tasks specific to the Vantage Security Hub.

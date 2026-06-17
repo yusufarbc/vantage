@@ -29,7 +29,9 @@ gophish_admin.key
 *.exe
 gophish.db*
 vantage.db*
-gophish
+/gophish
+/vantage
+/vantage-server
 
 # Vantage configurations and local databases
 .env

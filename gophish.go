@@ -34,18 +34,18 @@ import (
 
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/gophish/gophish/config"
-	"github.com/gophish/gophish/controllers"
-	"github.com/gophish/gophish/dialer"
-	"github.com/gophish/gophish/imap"
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/middleware"
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/notifier"
-	"github.com/gophish/gophish/scanner"
-	"github.com/gophish/gophish/webhook"
-	"github.com/gophish/gophish/worker"
-	"github.com/gophish/gophish/pkg/network"
+	"github.com/yusufarbc/vantage/config"
+	"github.com/yusufarbc/vantage/controllers"
+	"github.com/yusufarbc/vantage/dialer"
+	"github.com/yusufarbc/vantage/imap"
+	log "github.com/yusufarbc/vantage/logger"
+	"github.com/yusufarbc/vantage/middleware"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/notifier"
+	"github.com/yusufarbc/vantage/scanner"
+	"github.com/yusufarbc/vantage/webhook"
+	"github.com/yusufarbc/vantage/worker"
+	"github.com/yusufarbc/vantage/pkg/network"
 )
 
 const (

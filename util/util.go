@@ -18,8 +18,8 @@ import (
 	"regexp"
 	"time"
 
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
+	log "github.com/yusufarbc/vantage/logger"
+	"github.com/yusufarbc/vantage/models"
 	"github.com/jordan-wright/email"
 )
 

@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gophish/gophish/logger"
+	"github.com/yusufarbc/vantage/logger"
 )
 
 // TunnelManager manages the Chisel server subprocess that accepts reverse

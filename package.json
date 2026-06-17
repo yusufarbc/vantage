@@ -1,16 +1,16 @@
 {
-  "name": "gophish",
-  "version": "0.4.0-dev",
+  "name": "vantage",
+  "version": "2.0.0-dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gophish/gophish.git"
+    "url": "git+https://github.com/yusufarbc/vantage.git"
   },
-  "author": "Jordan Wright",
+  "author": "Yusuf Talha Arabacı",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gophish/gophish/issues"
+    "url": "https://github.com/yusufarbc/vantage/issues"
   },
-  "homepage": "https://getgophish.com",
+  "homepage": "https://github.com/yusufarbc/vantage",
   "devDependencies": {
     "@babel/core": "^7.4.5",
     "@babel/preset-env": "^7.4.5",

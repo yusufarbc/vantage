@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gophish/gophish/dialer"
-	log "github.com/gophish/gophish/logger"
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/util"
+	"github.com/yusufarbc/vantage/dialer"
+	log "github.com/yusufarbc/vantage/logger"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/util"
 	"github.com/jordan-wright/email"
 )
 

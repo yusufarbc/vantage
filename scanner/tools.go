@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gophish/gophish/models"
+	"github.com/yusufarbc/vantage/models"
 )
 
 // ── Phase 1a: OSINT — Passive Subdomain Enumeration ──────────────────────────

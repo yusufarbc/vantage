@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gophish/gophish/config"
-	log "github.com/gophish/gophish/logger"
+	"github.com/yusufarbc/vantage/config"
+	log "github.com/yusufarbc/vantage/logger"
 )
 
 var conf *config.NotificationConfig

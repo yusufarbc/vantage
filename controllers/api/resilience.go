@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/scanner"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/scanner"
 )
 
 type StressStartRequest struct {

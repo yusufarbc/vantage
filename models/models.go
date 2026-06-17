@@ -14,9 +14,9 @@ import (
 	"bitbucket.org/liamstask/goose/lib/goose"
 
 	mysql "github.com/go-sql-driver/mysql"
-	"github.com/gophish/gophish/auth"
-	"github.com/gophish/gophish/config"
-	log "github.com/gophish/gophish/logger"
+	"github.com/yusufarbc/vantage/auth"
+	"github.com/yusufarbc/vantage/config"
+	log "github.com/yusufarbc/vantage/logger"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 )

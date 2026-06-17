@@ -1,3 +1,10 @@
+# Normalize line endings for source files so `gofmt`/CI behave the same
+# regardless of contributor OS. (Existing tracked files are NOT
+# retroactively renormalized here — see doc/CHANGELOG.md.)
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+
 static/api-doc/* linguist-vendored
 static/bootstrap/* linguist-vendored
 static/css/* linguist-vendored
