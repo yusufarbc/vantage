@@ -29,8 +29,10 @@
 For detailed setup and usage instructions, please refer to the following guides:
 
 *   📖 **[Vantage Overview & API Reference](doc/README_VANTAGE.md)** - Main project documentation.
+*   🏗️ **[Architecture](doc/ARCHITECTURE.md)** - Scanner engine design and where things live.
 *   🚀 **[Deployment & Operations Guide](doc/DEPLOYMENT_GUIDE.md)** - Step-by-step VPS/Server deployment.
 *   🌐 **[Reverse L3 Tunnel Guide](doc/REVERSE_TUNNEL_GUIDE.md)** - **[NEW]** Setup and usage for internal scanning.
+*   📝 **[Changelog](doc/CHANGELOG.md)** - Notable changes and known open items.
 
 ## 🌐 Platform Architecture (Phishing & Scanning Workflows)
 
@@ -88,8 +90,8 @@ graph TD
 ## 🏗️ Quick Start
 
 ```bash
-git clone https://github.com/your-org/gophish-vantage.git
-cd gophish-vantage
+git clone https://github.com/yusufarbc/vantage.git
+cd vantage
 cp .env.example .env
 # Edit .env and start
 docker-compose up -d
@@ -98,6 +100,12 @@ docker-compose up -d
 Access your dashboard at `https://yourdomain.com/` (as configured in `.env`).
 
 ---
+
+## 🍴 Fork Notice
+
+Vantage is a fork of [Gophish](https://github.com/gophish/gophish) by Jordan Wright, extended
+with a ProjectDiscovery-based scanning engine and reverse-tunnel infrastructure. Gophish's
+original MIT copyright notice is preserved in [LICENSE](./LICENSE) alongside Vantage's own.
 
 ## ⚖️ License
 

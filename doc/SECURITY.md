@@ -2,8 +2,13 @@
 
 ## Reporting a Vulnerability
 
-Thank you for taking the time to find and report a security vulnerability in Gophish!
+Thank you for taking the time to find and report a security vulnerability in Vantage!
 
-I'd ask that you please send me an email with the details at hi@getgophish.com rather than posting any details in the public issue tracker.
+Please report it privately via [GitHub Security Advisories](https://github.com/yusufarbc/vantage/security/advisories/new)
+rather than posting any details in the public issue tracker.
 
-I'll happily work with you to get the vulnerability resolved as quickly as possible, and will be sure to credit you (if you'd like!) in the release notes for the following release.
+We'll work with you to get the vulnerability resolved as quickly as possible, and will be sure
+to credit you (if you'd like!) in the release notes for the following release.
+
+For vulnerabilities in upstream Gophish itself (unrelated to Vantage's scanner/deployment
+additions), please also consider reporting to the [Gophish project](https://github.com/gophish/gophish/security).
