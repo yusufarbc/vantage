@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gophish/gophish/pkg/network"
+	"github.com/yusufarbc/vantage/pkg/network"
 )
 
 // StressRequest defines infrastructure stress-test parameters.

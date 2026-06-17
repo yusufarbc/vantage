@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	ctx "github.com/gophish/gophish/context"
-	"github.com/gophish/gophish/models"
+	ctx "github.com/yusufarbc/vantage/context"
+	"github.com/yusufarbc/vantage/models"
 )
 
 func createUnpriviledgedUser(t *testing.T, slug string) *models.User {

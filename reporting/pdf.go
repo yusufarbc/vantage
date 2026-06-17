@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gophish/gophish/models"
+	"github.com/yusufarbc/vantage/models"
 	"github.com/jung-kurt/gofpdf"
 )
 

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gophish/gophish/models"
-	"github.com/gophish/gophish/pkg/network"
+	"github.com/yusufarbc/vantage/models"
+	"github.com/yusufarbc/vantage/pkg/network"
 )
 
 // ── Response Types ─────────────────────────────────────────────────────────────
