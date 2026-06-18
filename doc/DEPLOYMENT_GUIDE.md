@@ -30,22 +30,50 @@ The rest of this guide covers the same steps manually, plus day-2 operations.
 - Network: Public IP + domain
 
 **System Setup:**
+
+Official Docker Engine installation ([docs.docker.com/engine/install/ubuntu](https://docs.docker.com/engine/install/ubuntu/) —
+use `/debian/` instead of `/ubuntu/` in the URLs below if you're on Debian).
+The `get.docker.com` convenience script is fine for quick testing, but Docker's own docs say
+not to rely on it for production — this is the supported path:
+
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Docker & Docker Compose
-curl -fsSL https://get.docker.com | sh
+# Remove any conflicting older packages
+sudo apt remove -y $(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc 2>/dev/null | cut -f1)
+
+# Add Docker's official GPG key
+sudo apt update
+sudo apt install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the Docker apt repository (deb822 format)
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+sudo apt update
+
+# Install Docker Engine + the Compose v2 plugin
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Let your user run docker without sudo (log out/in, or `newgrp docker`, to apply)
 sudo usermod -aG docker $USER
 
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
 # Verify installation
-docker --version
-docker-compose --version
+sudo docker run hello-world
+docker compose version
 ```
+
+`scripts/setup.sh` and the rest of this guide use `docker compose` (the v2 plugin, space, no
+hyphen) — that's what `docker-compose-plugin` installs above.
 
 ### Step 2: Configure DNS
 
