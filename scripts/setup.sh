@@ -1,0 +1,133 @@
+#!/bin/bash
+# setup.sh — One-command bootstrap for deploying Vantage with Docker Compose.
+#
+# Creates .env from .env.example if missing, fills in the values that have
+# real security consequences if left at their defaults (admin path secret,
+# basic-auth password hash, initial admin password), then builds and starts
+# the stack.
+#
+# Usage:
+#   ./scripts/setup.sh                      interactive prompts for PROD values
+#   VANTAGE_ENV=TEST ./scripts/setup.sh      skip prompts, run local/dev mode
+#
+# Re-running is safe: it never overwrites an existing .env value that's
+# already been customized away from the .env.example default.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLUE='\033[0;34m'; NC='\033[0m'
+info()  { echo -e "${BLUE}[setup]${NC} $1"; }
+ok()    { echo -e "${GREEN}[setup]${NC} $1"; }
+warn()  { echo -e "${YELLOW}[setup]${NC} $1"; }
+fail()  { echo -e "${RED}[setup]${NC} $1"; exit 1; }
+
+command -v docker >/dev/null 2>&1 || fail "docker not found. Install it first: https://get.docker.com"
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+else
+    fail "Neither 'docker compose' nor 'docker-compose' found."
+fi
+
+random_token() {
+    # $1 = byte length before hex-encoding
+    head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'
+}
+
+if [ ! -f .env ]; then
+    cp .env.example .env
+    ok "Created .env from .env.example"
+else
+    info ".env already exists — only filling in missing/default values"
+fi
+
+# shellcheck disable=SC1091
+set -a; source .env; set +a
+
+set_env() {
+    # set_env KEY VALUE — updates KEY=... in .env (creates it if absent)
+    local key="$1" value="$2"
+    if grep -q "^${key}=" .env; then
+        sed -i.bak "s#^${key}=.*#${key}=${value}#" .env && rm -f .env.bak
+    else
+        echo "${key}=${value}" >> .env
+    fi
+}
+
+VANTAGE_ENV="${VANTAGE_ENV:-TEST}"
+info "VANTAGE_ENV=${VANTAGE_ENV}"
+
+if [ "${ADMIN_PATH_SECRET:-vantage-ops-secret-777}" = "vantage-ops-secret-777" ]; then
+    NEW_SECRET="vantage-ops-$(random_token 12)"
+    set_env ADMIN_PATH_SECRET "$NEW_SECRET"
+    ADMIN_PATH_SECRET="$NEW_SECRET"
+    ok "Generated a random ADMIN_PATH_SECRET (the default value is public — anyone who reads this repo knows it)"
+fi
+
+if [ "$VANTAGE_ENV" = "PROD" ]; then
+    if [ "${DOMAIN:-localhost}" = "localhost" ]; then
+        read -rp "Domain name for this deployment (e.g. vantage.example.com): " DOMAIN_INPUT
+        [ -n "$DOMAIN_INPUT" ] || fail "A real domain is required in PROD mode (Let's Encrypt needs it to issue a certificate)."
+        set_env DOMAIN "$DOMAIN_INPUT"
+        set_env ADMIN_DOMAIN "$DOMAIN_INPUT"
+        DOMAIN="$DOMAIN_INPUT"
+    fi
+    if [ "${CADDY_EMAIL:-admin@vantage.local}" = "admin@vantage.local" ]; then
+        read -rp "Contact email for Let's Encrypt (e.g. you@example.com): " EMAIL_INPUT
+        [ -n "$EMAIL_INPUT" ] || fail "A contact email is required in PROD mode."
+        set_env CADDY_EMAIL "$EMAIL_INPUT"
+    fi
+    if [ -z "${ADMIN_PASS_HASH:-}" ]; then
+        warn "ADMIN_PASS_HASH is empty — Caddy's Basic Auth layer in front of the admin dashboard will be DISABLED."
+        read -rp "Set a Basic Auth password now? [Y/n] " ANSWER
+        if [ "${ANSWER:-Y}" != "n" ] && [ "${ANSWER:-Y}" != "N" ]; then
+            read -rsp "Password: " ADMIN_PASSWORD; echo
+            HASH=$(docker run --rm caddy caddy hash-password --plaintext "$ADMIN_PASSWORD")
+            set_env ADMIN_PASS_HASH "$HASH"
+            ok "Basic Auth password set"
+        else
+            warn "Continuing without Basic Auth. The Gophish login screen is still behind the secret admin path and its own auth, but consider setting ADMIN_PASS_HASH later."
+        fi
+    fi
+fi
+
+if [ -z "${GOPHISH_INITIAL_ADMIN_PASSWORD:-}" ]; then
+    GENERATED_PASSWORD=$(random_token 16)
+    set_env GOPHISH_INITIAL_ADMIN_PASSWORD "$GENERATED_PASSWORD"
+    ok "Generated the initial Gophish admin password (shown again at the end of this script)"
+fi
+
+info "Building images (this includes compiling the ProjectDiscovery toolchain — can take several minutes the first time)..."
+$COMPOSE build
+
+info "Starting services..."
+$COMPOSE up -d
+
+info "Waiting for vantage-core to report healthy..."
+for _ in $(seq 1 30); do
+    STATUS=$(docker inspect -f '{{.State.Health.Status}}' vantage_core 2>/dev/null || true)
+    if [ "$STATUS" = "healthy" ]; then
+        break
+    fi
+    sleep 5
+done
+if [ "$STATUS" != "healthy" ]; then
+    warn "vantage-core did not report healthy within 150s — check '$COMPOSE logs vantage-core'"
+fi
+
+# shellcheck disable=SC1091
+set -a; source .env; set +a
+
+echo
+ok "Vantage is up."
+if [ "$VANTAGE_ENV" = "PROD" ]; then
+    echo "  URL:      https://${DOMAIN}/${ADMIN_PATH_SECRET}"
+else
+    echo "  URL:      http://localhost:${HOST_ADMIN_PORT:-3333}/"
+fi
+echo "  Username: admin"
+echo "  Password: ${GOPHISH_INITIAL_ADMIN_PASSWORD}"
+echo
+warn "Save the password above now — it is only generated once and is needed for first login (you will be asked to change it)."

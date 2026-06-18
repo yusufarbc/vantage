@@ -1,5 +1,23 @@
 # Vantage Deployment & Operations Guide
 
+## ⚡ Quick Start (Recommended)
+
+Once Docker is installed (see Step 1) and DNS points at your server (Step 2):
+
+```bash
+cd /opt
+sudo git clone https://github.com/yusufarbc/vantage.git
+sudo chown -R $USER:$USER vantage && cd vantage
+VANTAGE_ENV=PROD ./scripts/setup.sh
+```
+
+The script creates `.env` from `.env.example`, prompts for your domain/Let's Encrypt email and
+an optional Basic Auth password, generates the admin path secret and the initial Gophish admin
+password, then runs `docker compose build && up -d` and prints the login URL/credentials when
+done. Re-running it is safe — it only fills in values still left at their `.env.example` default.
+
+The rest of this guide covers the same steps manually, plus day-2 operations.
+
 ## 🚀 Initial Deployment (VPS/Cloud)
 
 ### Step 1: Server Preparation
@@ -42,8 +60,8 @@ landing.example.com  A  1.2.3.4  (optional alias)
 
 ```bash
 cd /opt
-sudo git clone https://github.com/your-org/gophish-vantage.git
-cd gophish-vantage
+sudo git clone https://github.com/yusufarbc/vantage.git
+cd vantage
 
 # Set proper permissions
 sudo chown -R $USER:$USER .
@@ -234,7 +252,7 @@ docker-compose up -d
 crontab -e
 
 # Add line:
-0 2 * * * cd /opt/gophish-vantage && docker-compose exec -T vantage-core cp /opt/vantage/db/vantage.db ./backups/vantage-$(date +\%Y\%m\%d).db
+0 2 * * * cd /opt/vantage && docker-compose exec -T vantage-core cp /opt/vantage/db/vantage.db ./backups/vantage-$(date +\%Y\%m\%d).db
 ```
 
 ---
