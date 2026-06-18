@@ -89,25 +89,28 @@ func (as *Server) StartScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dispatch scan asynchronously
-	go func() {
-		var scanErr error
-		if mode == "discovery" {
-			scanErr = scanner.RunDiscovery(uid, scanRecord.ID, req.Target, req.Interface, req.Options)
-		} else if len(req.Tools) > 1 || (len(req.Tools) == 1 && req.Tools[0] == "task") {
-			scanErr = scanner.RunTask(uid, scanRecord.ID, req.Target, req.Interface, req.Tools, req.Options)
-		} else {
-			tool := "nuclei"
-			if len(req.Tools) == 1 {
-				tool = req.Tools[0]
-			}
-			scanErr = scanner.RunScannerTool(uid, scanRecord.ID, tool, req.Target, req.Interface, req.Options)
+	// Dispatch the scan. RunDiscovery/RunTask/RunScannerTool only do
+	// synchronous validation (e.g. acquiring the scan lock) before
+	// starting their own background goroutine and returning, so this
+	// call returns immediately without blocking the request.
+	var scanErr error
+	if mode == "discovery" {
+		scanErr = scanner.RunDiscovery(uid, scanRecord.ID, req.Target, req.Interface, req.Options)
+	} else if len(req.Tools) > 1 || (len(req.Tools) == 1 && req.Tools[0] == "task") {
+		scanErr = scanner.RunTask(uid, scanRecord.ID, req.Target, req.Interface, req.Tools, req.Options)
+	} else {
+		tool := "nuclei"
+		if len(req.Tools) == 1 {
+			tool = req.Tools[0]
 		}
+		scanErr = scanner.RunScannerTool(uid, scanRecord.ID, tool, req.Target, req.Interface, req.Options)
+	}
 
-		if scanErr != nil {
-			log.Errorf("Scan dispatch failed: %v", scanErr)
-		}
-	}()
+	if scanErr != nil {
+		log.Errorf("Scan dispatch failed: %v", scanErr)
+		JSONResponse(w, models.Response{Success: false, Message: scanErr.Error()}, http.StatusConflict)
+		return
+	}
 
 	JSONResponse(w, ScanResponse{
 		Message: "scan queued and starting",
