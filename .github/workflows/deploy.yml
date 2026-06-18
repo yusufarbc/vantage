@@ -1,0 +1,104 @@
+name: Build & Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # Elle de tetiklenebilsin
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}   # ghcr.io/yusufarbc/vantage
+
+jobs:
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          # Caches Docker layers (incl. the slow ProjectDiscovery Go tool builds)
+          # in GitHub's Actions cache, so unrelated commits don't recompile them.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to VPS
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_ACTOR
+          script: |
+            set -e
+
+            DEPLOY_DIR="/opt/vantage"
+            cd "$DEPLOY_DIR"
+
+            echo "==> Pulling latest docker-compose.yml/Caddyfile/scripts from git..."
+            git pull origin main
+
+            echo "==> Logging in to GHCR..."
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
+
+            echo "==> Pulling prebuilt images (no local build — VPS has no SSD)..."
+            docker compose pull
+
+            echo "==> Restarting stack..."
+            docker compose up -d --remove-orphans
+
+            echo "==> Removing dangling images..."
+            docker image prune -f
+
+            echo "==> Waiting for vantage-core to be healthy..."
+            for i in $(seq 1 30); do
+              STATUS=$(docker inspect -f '{{.State.Health.Status}}' vantage_core 2>/dev/null || echo "pending")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "==> vantage-core is healthy."
+                break
+              fi
+              echo "    attempt $i/30 — status: $STATUS"
+              sleep 5
+            done
+
+            if [ "$STATUS" != "healthy" ]; then
+              echo "ERROR: vantage-core did not become healthy in time."
+              docker compose logs --tail=50 vantage-core
+              exit 1
+            fi
+
+            echo "==> Deploy complete."

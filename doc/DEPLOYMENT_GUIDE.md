@@ -485,8 +485,11 @@ curl https://admin.example.com/api/scanner/findings \
 - [ ] Review scan logs for anomalies
 - [ ] Check Caddy certificate validity (auto-renewed by Let's Encrypt)
 - [ ] Monitor disk usage: `df -h`
-- [ ] Update ProjectDiscovery tools (this rebuilds the image, since the binaries are installed
-  at build time, not via a writable container path):
+- [ ] Update ProjectDiscovery tools — the binaries are installed at image build time, not via a
+  writable container path. If CI/CD is set up (`.github/workflows/deploy.yml`, builds on GHCR
+  and the VPS only pulls — see below), trigger a rebuild from GitHub Actions
+  (`workflow_dispatch`) rather than building on the VPS itself. Without CI/CD, build locally on
+  the VPS:
   ```bash
   docker compose build --no-cache vantage-core && docker compose up -d
   ```
@@ -621,9 +624,11 @@ docker compose logs caddy
 # Verify tools are installed
 docker compose exec vantage-core which nuclei subfinder httpx
 
-# If missing, rebuild (binaries are baked in at build time, not installable at runtime):
-docker compose build --no-cache vantage-core
-docker compose up -d
+# If missing: binaries are baked in at build time, not installable at runtime.
+# With CI/CD (image pulled from GHCR): re-run the GitHub Actions workflow, then on the VPS:
+docker compose pull vantage-core && docker compose up -d
+# Without CI/CD (building locally on the VPS):
+docker compose build --no-cache vantage-core && docker compose up -d
 
 # Check scanner status
 curl http://localhost:3333/api/scanner/status

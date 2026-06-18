@@ -9,6 +9,10 @@ services:
   # Core: Vantage Application (Gophish + Scanner Engine)
   # ─────────────────────────────────────────────────────────────────────────────
   vantage-core:
+    # 'image' lets the VPS just 'docker compose pull' a prebuilt image from GHCR
+    # instead of building from source (slow on HDD-backed VPS — see CI workflow).
+    # 'build' is kept so local dev (`docker compose build`) still works without CI.
+    image: ghcr.io/yusufarbc/vantage:latest
     build:
       context: .
       dockerfile: Dockerfile

@@ -36,3 +36,6 @@ vantage.db*
 # Vantage configurations and local databases
 .env
 vantage_data/
+
+# VPS credentials — never commit, this repo is public
+vps.txt
