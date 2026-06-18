@@ -120,10 +120,9 @@ Edit accordingly:
 DOMAIN=gophish.example.com
 VANTAGE_PASSWORD_HASH=$2a$14$R9h/cIPz0gi.URNNX3kh2O...
 
-# If using SMTP relay (Gmail example):
-POSTFIX_RELAYHOST=[smtp.gmail.com]:587
-POSTFIX_RELAYHOST_USERNAME=your-email@gmail.com
-POSTFIX_RELAYHOST_PASSWORD=your-app-password
+# Direct mail sending (no external relay) — see "Step 6.5: Mail (Direct Sending)" below
+MAIL_HOSTNAME=mail.example.com
+MAIL_DOMAIN=example.com
 
 # Optional: Tailscale
 TAILSCALE_AUTH_KEY=tskey-xxxxxxxx
@@ -147,6 +146,43 @@ docker-compose ps
 # postfix        running
 # caddy          running
 ```
+
+### Step 6.5: Mail (Direct Sending)
+
+If `MAIL_HOSTNAME`/`MAIL_DOMAIN` are set, Postfix sends mail straight to the internet — no
+external relay (Gmail/SendGrid/etc.) involved. This needs a few things to actually land in
+inboxes instead of spam folders or being rejected outright:
+
+1. **Outbound port 25 must be open.** Many VPS providers block it by default to fight spam.
+   Check with your provider's control panel/support, or test from the host once it's up:
+   ```bash
+   docker compose exec postfix sh -c "echo QUIT | nc -w5 smtp.gmail.com 25"
+   ```
+
+2. **PTR/rDNS record**: set the server's IP to resolve back to `MAIL_HOSTNAME` (e.g.
+   `mail.example.com`). This is configured in your VPS provider's panel, not in Cloudflare —
+   Cloudflare only controls forward DNS for your domain.
+
+3. **DNS records** (add these in Cloudflare, all **DNS only** — proxying doesn't apply to raw
+   SMTP):
+   ```
+   mail.example.com         A    <vps-ip>           (DNS only)
+   example.com              TXT  "v=spf1 ip4:<vps-ip> ~all"
+   _dmarc.example.com       TXT  "v=DMARC1; p=none; rua=mailto:postmaster@example.com"
+   ```
+   `p=none` is for testing — tighten to `quarantine`/`reject` once delivery is confirmed working.
+
+4. **DKIM**: after the stack is up, fetch the generated public key and add it as a TXT record:
+   ```bash
+   docker compose exec postfix sh -c 'cat /etc/opendkim/keys/*/*.txt'
+   ```
+   This prints a record like `mail._domainkey IN TXT ( "v=DKIM1; ..." )` — create a TXT record
+   named `mail._domainkey.example.com` in Cloudflare with that value (DNS only). The keys are
+   stored in the `opendkim_keys` Docker volume, so they survive restarts and the DNS record
+   stays valid.
+
+5. In Gophish, set the SMTP sending profile's "From" address to `...@example.com` (matching
+   `MAIL_DOMAIN`) — DKIM only signs/passes if the From domain matches.
 
 ### Step 7: Initial Access
 

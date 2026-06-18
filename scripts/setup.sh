@@ -79,6 +79,18 @@ if [ "$VANTAGE_ENV" = "PROD" ]; then
         [ -n "$EMAIL_INPUT" ] || fail "A contact email is required in PROD mode."
         set_env CADDY_EMAIL "$EMAIL_INPUT"
     fi
+    if [ "${MAIL_HOSTNAME:-vantage.local}" = "vantage.local" ]; then
+        warn "MAIL_HOSTNAME/MAIL_DOMAIN are at their default — Postfix will send as 'vantage.local', which most mail servers will reject."
+        read -rp "Mail server hostname for Postfix, must match this VPS's PTR/rDNS record (e.g. mail.example.com), or leave blank to skip: " MAIL_HOSTNAME_INPUT
+        if [ -n "$MAIL_HOSTNAME_INPUT" ]; then
+            set_env MAIL_HOSTNAME "$MAIL_HOSTNAME_INPUT"
+            read -rp "Sending domain for DKIM signing, matches the Gophish 'From' address domain (e.g. example.com): " MAIL_DOMAIN_INPUT
+            [ -n "$MAIL_DOMAIN_INPUT" ] || fail "A mail domain is required when MAIL_HOSTNAME is set."
+            set_env MAIL_DOMAIN "$MAIL_DOMAIN_INPUT"
+        else
+            warn "Skipping mail setup — direct sending will likely be rejected/spam-flagged until MAIL_HOSTNAME/MAIL_DOMAIN are set."
+        fi
+    fi
     if [ -z "${ADMIN_PASS_HASH:-}" ]; then
         warn "ADMIN_PASS_HASH is empty — Caddy's Basic Auth layer in front of the admin dashboard will be DISABLED."
         read -rp "Set a Basic Auth password now? [Y/n] " ANSWER

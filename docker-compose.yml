@@ -118,12 +118,21 @@ services:
     networks:
       - vantage-net
 
+    # Persist DKIM keys (regenerating them would invalidate the DNS TXT record)
+    volumes:
+      - opendkim_keys:/etc/opendkim/keys
+
     environment:
-      # Postfix hostname
-      - POSTFIX_myhostname=vantage.local
+      # Postfix hostname — must match the server's PTR/rDNS record for direct sending
+      - POSTFIX_myhostname=${MAIL_HOSTNAME:-vantage.local}
 
       # Allow vantage-core to relay
       - POSTFIX_mynetworks=172.20.0.0/16
+
+      # DKIM-sign outgoing mail for this domain (must match the "From" address domain
+      # used in Gophish sending profiles). Public key ends up in /etc/opendkim/keys/<domain>/mail.txt
+      - OPENDKIM_DOMAINS=${MAIL_DOMAIN:-vantage.local}
+      - OPENDKIM_RequireSafeKeys=no
 
     # Resource limits
     deploy:
@@ -232,4 +241,8 @@ volumes:
 
   # Caddy configuration
   caddy_config:
+    driver: local
+
+  # OpenDKIM keys (persisted so the DNS DKIM TXT record stays valid across restarts)
+  opendkim_keys:
     driver: local
