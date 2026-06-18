@@ -372,7 +372,12 @@ func (s *VantageScanService) RunTask(userID int64, scanID uint, target, ifaceNam
 				if ctx.Err() != nil { break }
 				wg.Add(1)
 				go func(t string) {
-					defer wg.Done()
+					defer func() {
+						if r := recover(); r != nil {
+							emitLog(fmt.Sprintf("[FATAL] Parallel tool %q panic: %v", t, r))
+						}
+						wg.Done()
+					}()
 					args := buildScannerArgs(t, target, ifaceName, opts)
 					_ = s.Executor.Execute(ctx, userID, t, target, ifaceName, args)
 				}(tool)
