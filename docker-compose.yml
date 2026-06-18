@@ -76,15 +76,18 @@ services:
       # Logging
       - LOG_LEVEL=info
 
-    # Resource limits (prevent runaway resource usage)
+    # Resource limits (prevent runaway resource usage). Defaults assume the
+    # documented minimum spec (4 CPU / 8GB RAM). On smaller VPS, override
+    # CORE_CPU_LIMIT/CORE_CPU_RESERVATION/CORE_MEM_LIMIT/CORE_MEM_RESERVATION
+    # in .env — Docker rejects a 'cpus' value above the host's actual core count.
     deploy:
       resources:
         limits:
-          cpus: '4'
-          memory: 4G
+          cpus: '${CORE_CPU_LIMIT:-4}'
+          memory: ${CORE_MEM_LIMIT:-4G}
         reservations:
-          cpus: '2'
-          memory: 2G
+          cpus: '${CORE_CPU_RESERVATION:-2}'
+          memory: ${CORE_MEM_RESERVATION:-2G}
 
     # Health check: Ensure service is responding
     healthcheck:
@@ -138,15 +141,15 @@ services:
       - OPENDKIM_DOMAINS=${MAIL_DOMAIN:-vantage.local}
       - OPENDKIM_RequireSafeKeys=no
 
-    # Resource limits
+    # Resource limits — see CORE_CPU_LIMIT comment above for the override pattern
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '${POSTFIX_CPU_LIMIT:-1}'
+          memory: ${POSTFIX_MEM_LIMIT:-512M}
         reservations:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '${POSTFIX_CPU_RESERVATION:-0.5}'
+          memory: ${POSTFIX_MEM_RESERVATION:-256M}
 
     healthcheck:
       test: [ "CMD", "postfix", "status" ]
