@@ -11,8 +11,9 @@ sudo chown -R $USER:$USER vantage && cd vantage
 VANTAGE_ENV=PROD ./scripts/setup.sh
 ```
 
-The script creates `.env` from `.env.example`, prompts for your domain/Let's Encrypt email and
-an optional Basic Auth password, generates the admin path secret and the initial Gophish admin
+The script creates `.env` from `.env.example`, prompts for your domain/Let's Encrypt email, an
+optional Basic Auth password, and optional direct-mail-sending settings (`MAIL_HOSTNAME`/
+`MAIL_DOMAIN` — see Step 6.5), generates the admin path secret and the initial Gophish admin
 password, then runs `docker compose build && up -d` and prints the login URL/credentials when
 done. Re-running it is safe — it only fills in values still left at their `.env.example` default.
 
@@ -77,12 +78,26 @@ hyphen) — that's what `docker-compose-plugin` installs above.
 
 ### Step 2: Configure DNS
 
-Point your domain to the server IP:
+Vantage uses **two** domain roles, set independently in `.env` ([.env.example](../.env.example)):
+- `ADMIN_DOMAIN` — the Gophish admin dashboard/API, hidden behind the `ADMIN_PATH_SECRET` path.
+- `DOMAIN` (mapped to `PHISH_DOMAIN` in Caddy) — public-facing phishing/landing pages, no auth.
+
+Use **two different subdomains** for these — Caddy defines them as separate site blocks, and
+pointing both at the exact same hostname makes Caddy fail to start with an "ambiguous site
+definition" error:
 ```
-gophish.example.com  A  1.2.3.4
-phish.example.com    A  1.2.3.4  (optional subdomain for landing pages)
-landing.example.com  A  1.2.3.4  (optional alias)
+admin.example.com   A  1.2.3.4   (admin dashboard / API — ADMIN_DOMAIN)
+phish.example.com   A  1.2.3.4   (phishing & landing pages — DOMAIN)
 ```
+
+If you're behind Cloudflare (or another proxying DNS host), set both records to **DNS only**
+(grey cloud, not proxied). Caddy issues its own Let's Encrypt certificate via the HTTP-01
+challenge and needs to reach your server directly — an orange-cloud proxy in front of it adds
+a second TLS hop that isn't required and complicates certificate issuance.
+
+If you also plan to send mail directly from this server (no external SMTP relay), see
+**Step 6.5: Mail (Direct Sending)** below for the additional DNS records needed (PTR, SPF,
+DKIM, DMARC).
 
 ### Step 3: Clone & Prepare
 
@@ -117,34 +132,41 @@ nano .env
 
 Edit accordingly:
 ```bash
-DOMAIN=gophish.example.com
-VANTAGE_PASSWORD_HASH=$2a$14$R9h/cIPz0gi.URNNX3kh2O...
+# Public-facing phishing/landing pages and the admin dashboard — use two
+# different subdomains (see Step 2) to avoid a Caddy "ambiguous site" conflict.
+DOMAIN=phish.example.com
+ADMIN_DOMAIN=admin.example.com
+
+CADDY_EMAIL=you@example.com
+ADMIN_PASS_HASH=$2a$14$R9h/cIPz0gi.URNNX3kh2O...
 
 # Direct mail sending (no external relay) — see "Step 6.5: Mail (Direct Sending)" below
 MAIL_HOSTNAME=mail.example.com
 MAIL_DOMAIN=example.com
-
-# Optional: Tailscale
-TAILSCALE_AUTH_KEY=tskey-xxxxxxxx
 ```
+
+> Vantage doesn't ship a built-in Tailscale sidecar — `docker-compose.yml` has no Tailscale
+> service to uncomment. If you need VPN-reachable internal scanning, use the Chisel-based
+> reverse tunnel that's already built in (Step 8 below / [REVERSE_TUNNEL_GUIDE.md](REVERSE_TUNNEL_GUIDE.md)),
+> or add your own Tailscale sidecar container.
 
 ### Step 6: Start Services
 
 ```bash
 # Build image (includes ProjectDiscovery tools)
-docker-compose build
+docker compose build
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Wait for health checks
 sleep 10
-docker-compose ps
+docker compose ps
 
 # Expected output:
 # vantage_core    running (healthy)
-# postfix        running
-# caddy          running
+# vantage_postfix running
+# vantage_caddy   running
 ```
 
 ### Step 6.5: Mail (Direct Sending)
@@ -188,36 +210,61 @@ inboxes instead of spam folders or being rejected outright:
 
 ```bash
 # Check Caddy status
-docker-compose logs caddy -f --tail=20
-
+docker compose logs caddy -f --tail=20
 # Wait for "Serving HTTPS..." message
-# Then access: https://gophish.example.com/
-# Username: admin
-# Password: (your password from step 4)
 ```
+
+`ADMIN_DOMAIN` is hidden behind `ADMIN_PATH_SECRET` (a WAF rule in the Caddyfile 404s every
+request that doesn't carry the cookie set by that path). To log in:
+
+1. Visit `https://admin.example.com/<ADMIN_PATH_SECRET>` (value from your `.env`) once in a
+   browser — this sets a 30-day cookie and redirects you to `/`.
+2. If `ADMIN_PASS_HASH` is set (Step 4), the browser will also prompt for **Caddy** Basic Auth:
+   username is the fixed `vantage-admin` (not `admin` — set in `Caddyfile`), password is what
+   you hashed.
+3. You'll land on the Gophish login page. Username: `admin`. Password: the
+   `GOPHISH_INITIAL_ADMIN_PASSWORD` value `setup.sh` printed at the end (or
+   `docker compose logs vantage-core | grep -i password` if you set it up manually).
 
 ### Step 8: Reverse Tunnel Configuration (Optional)
 
 Vantage includes a built-in Chisel-based reverse tunnel server on port **9090**.
 
-1. **Verify exposure**: Port `9090` must be reachable for reverse agents.
-2. **Caddy Proxying (Recommended)**: For security, proxy port `9090` via Caddy (port 443) by adding this to your `Caddyfile`:
+1. **Verify exposure**: Port `9090` (`HOST_CHISEL_PORT`) must be reachable for reverse agents,
+   or use option 2 to tunnel it through Caddy on 443 instead.
+2. **Caddy Proxying (Recommended)**: add the route to the **existing** `{$ADMIN_DOMAIN}` block
+   in `Caddyfile` — don't create a new top-level block for `{$DOMAIN}`/`{$ADMIN_DOMAIN}`, Caddy
+   already has one for each and a second one with the same host fails to start. You also need
+   to exempt `/chisel/*` from the admin-obfuscation WAF rule, otherwise it 404s before reaching
+   the proxy:
+   ```caddy
+   {$ADMIN_DOMAIN:localhost} {
+       # ...
+       route {
+           @unauthorized {
+               not path /{$ADMIN_PATH_SECRET}* /chisel/*
+               not header Cookie *vantage_access=authorized*
+           }
+           respond @unauthorized "Not Found" 404
+       }
 
-```caddy
-{$DOMAIN} {
-    # ... other routes
-    handle /chisel/* {
-        reverse_proxy vantage-core:9090
-    }
-}
-```
+       handle /chisel/* {
+           reverse_proxy vantage-core:9090
+       }
 
-3. **Client Connection**: 
-```bash
-chisel client https://yourdomain.com/chisel R:tun0:0.0.0.0
-```
+       reverse_proxy vantage-core:3333 {
+           # ... existing headers
+       }
+   }
+   ```
 
-[Detailed Guide: REVERSE_TUNNEL_GUIDE.md](REVERSE_TUNNEL_GUIDE.md)
+3. **Client Connection**:
+   ```bash
+   chisel client https://admin.example.com/chisel R:tun0:0.0.0.0
+   ```
+
+[Detailed Guide: REVERSE_TUNNEL_GUIDE.md](REVERSE_TUNNEL_GUIDE.md) — note its Caddy snippet
+predates the admin/phish domain split above; the steps here are the up-to-date version.
 
 ---
 
@@ -225,16 +272,16 @@ chisel client https://yourdomain.com/chisel R:tun0:0.0.0.0
 
 ### 1. Configure Gophish Admin User
 
-First login:
-1. Access Gophish at `https://gophish.example.com/`
-2. You'll see login page (default: admin / password from first_password.txt)
-3. If no password, check logs: `docker-compose logs vantage-core | grep password`
+See Step 7 above for the secret-path/cookie + login flow. Once logged in, change the admin
+password from the generated one (Gophish prompts for this on first login).
 
 ### 2. Create SMTP Profile (for phishing emails)
 
-Via UI or API:
+Via UI, or via API once you have the `vantage_access` cookie (see Step 7) and the Gophish API
+key (Settings → API Key in the dashboard):
 ```bash
-curl -X POST https://gophish.example.com/api/smtp/ \
+curl -X POST https://admin.example.com/api/smtp/ \
+  -b "vantage_access=authorized" \
   -H "Content-Type: application/json" \
   -H "X-API-KEY: your-gophish-api-key" \
   -d '{
@@ -267,13 +314,17 @@ Capture credentials or track interactions.
 
 ```bash
 # Check all services
-docker-compose ps
+docker compose ps
 
-# Verify Caddy is routing correctly
-curl -I https://gophish.example.com/ -k
-# Expected: 401 Unauthorized (Basic Auth required)
+# Verify the WAF rule is hiding the admin domain (no cookie/secret path supplied)
+curl -I https://admin.example.com/ -k
+# Expected: 404 Not Found
 
-# Check scanner connectivity
+# With the secret path it redirects, and 401s if ADMIN_PASS_HASH (Caddy Basic Auth) is set
+curl -I https://admin.example.com/<ADMIN_PATH_SECRET> -k
+# Expected: 302 redirect to / (plus Set-Cookie: vantage_access=authorized)
+
+# Check scanner connectivity (bypasses Caddy — talks to vantage-core directly on the VPS)
 curl http://localhost:3333/api/scanner/status \
   -H "X-API-KEY: your-api-key"
 # Expected: {"running":false}
@@ -283,30 +334,30 @@ curl http://localhost:3333/api/scanner/status \
 
 ```bash
 # Real-time logs (follow mode)
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service logs
-docker-compose logs -f vantage-core
-docker-compose logs -f caddy --tail=50
-docker-compose logs -f postfix
+docker compose logs -f vantage-core
+docker compose logs -f caddy --tail=50
+docker compose logs -f postfix
 
 # Date-filtered logs
-docker-compose logs --since 2026-04-07T10:30:00 vantage-core
+docker compose logs --since 2026-04-07T10:30:00 vantage-core
 ```
 
 ### Database Backup
 
 ```bash
 # Backup Gophish database
-docker-compose exec vantage-core cp /opt/vantage/db/vantage.db /opt/vantage/db/vantage-backup-$(date +%Y%m%d-%H%M%S).db
+docker compose exec vantage-core cp /opt/vantage/db/vantage.db /opt/vantage/db/vantage-backup-$(date +%Y%m%d-%H%M%S).db
 
 # Copy from container to host
 docker cp vantage_core:/opt/vantage/db/vantage.db ./backup/vantage-$(date +%Y%m%d).db
 
 # Restore (if needed)
-docker-compose down
+docker compose down
 docker cp ./backup/vantage-2026-04-07.db vantage_core:/opt/vantage/db/vantage.db
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Automated Backups (Optional)
@@ -316,7 +367,7 @@ docker-compose up -d
 crontab -e
 
 # Add line:
-0 2 * * * cd /opt/vantage && docker-compose exec -T vantage-core cp /opt/vantage/db/vantage.db ./backups/vantage-$(date +\%Y\%m\%d).db
+0 2 * * * cd /opt/vantage && docker compose exec -T vantage-core cp /opt/vantage/db/vantage.db ./backups/vantage-$(date +\%Y\%m\%d).db
 ```
 
 ---
@@ -333,12 +384,17 @@ crontab -e
 
 ### Start a Scan via API
 
+All examples below go through the public `admin.example.com` domain, so they need the WAF
+cookie from Step 7 (`-b "vantage_access=authorized"`); add `-u vantage-admin:your-caddy-password`
+too if `ADMIN_PASS_HASH` is set. Running from the VPS itself, you can skip both and hit
+`http://localhost:3333/...` directly instead, as in the Health Checks example above.
+
 ```bash
 # Single tool scan
-curl -X POST https://gophish.example.com/api/scanner/start \
+curl -X POST https://admin.example.com/api/scanner/start \
+  -b "vantage_access=authorized" \
   -H "Content-Type: application/json" \
   -H "X-API-KEY: your-api-key" \
-  -u admin:your-password \
   -d '{
     "target": "acme.com",
     "tool": "nuclei",
@@ -346,10 +402,10 @@ curl -X POST https://gophish.example.com/api/scanner/start \
   }'
 
 # Discovery mode (full chain)
-curl -X POST https://gophish.example.com/api/scanner/start \
+curl -X POST https://admin.example.com/api/scanner/start \
+  -b "vantage_access=authorized" \
   -H "Content-Type: application/json" \
   -H "X-API-KEY: your-api-key" \
-  -u admin:your-password \
   -d '{
     "target": "example.com",
     "discovery_mode": true
@@ -360,30 +416,30 @@ curl -X POST https://gophish.example.com/api/scanner/start \
 
 ```bash
 # All findings
-curl https://gophish.example.com/api/scanner/findings \
-  -H "X-API-KEY: your-api-key" \
-  -u admin:your-password
+curl https://admin.example.com/api/scanner/findings \
+  -b "vantage_access=authorized" \
+  -H "X-API-KEY: your-api-key"
 
 # Critical findings only
-curl 'https://gophish.example.com/api/scanner/findings?severity=critical' \
-  -H "X-API-KEY: your-api-key" \
-  -u admin:your-password
+curl 'https://admin.example.com/api/scanner/findings?severity=critical' \
+  -b "vantage_access=authorized" \
+  -H "X-API-KEY: your-api-key"
 
 # Filter by tool and limit
-curl 'https://gophish.example.com/api/scanner/findings?tool=nuclei&severity=high&limit=10' \
-  -H "X-API-KEY: your-api-key" \
-  -u admin:your-password
+curl 'https://admin.example.com/api/scanner/findings?tool=nuclei&severity=high&limit=10' \
+  -b "vantage_access=authorized" \
+  -H "X-API-KEY: your-api-key"
 ```
 
 ### Advanced Scanning Scenarios
 
-#### Scenario 1: Internal Network via Tailscale
+#### Scenario 1: Internal Network Scanning
 
-1. Uncomment Tailscale in `docker-compose.yml`
-2. Generate auth key at https://login.tailscale.com/admin/settings/keys
-3. Set `TAILSCALE_AUTH_KEY=tskey-...` in `.env`
-4. Restart: `docker-compose up -d --force-recreate`
-5. Now scan internal IPs: `10.0.0.0/8`, `172.16.0.0/12`, etc.
+There's no built-in Tailscale sidecar to "uncomment" — `docker-compose.yml` doesn't ship one.
+The supported way to reach internal/NATed networks is the Chisel-based reverse tunnel that's
+already wired into `vantage-core` (Step 8 above): an agent on the internal network connects
+out to your VPS, a `tun0` interface appears, and you route internal CIDRs (`10.0.0.0/8`,
+`172.16.0.0/12`, etc.) through it. Full walkthrough: [REVERSE_TUNNEL_GUIDE.md](REVERSE_TUNNEL_GUIDE.md).
 
 #### Scenario 2: Bulk Domain Scanning
 
@@ -397,10 +453,10 @@ EOF
 
 # Scan each domain with Nuclei
 for domain in $(cat domains.txt); do
-  curl -X POST https://gophish.example.com/api/scanner/start \
+  curl -X POST https://admin.example.com/api/scanner/start \
+    -b "vantage_access=authorized" \
     -H "Content-Type: application/json" \
     -H "X-API-KEY: your-api-key" \
-    -u admin:your-password \
     -d '{
       "target": "'$domain'",
       "tool": "nuclei"
@@ -413,9 +469,9 @@ done
 
 ```bash
 # Query findings as JSON, convert to CSV
-curl https://gophish.example.com/api/scanner/findings \
-  -H "X-API-KEY: your-api-key" \
-  -u admin:your-password | \
+curl https://admin.example.com/api/scanner/findings \
+  -b "vantage_access=authorized" \
+  -H "X-API-KEY: your-api-key" | \
   jq -r '.[] | [.severity, .tool_name, .name, .target] | @csv' > findings.csv
 ```
 
@@ -429,20 +485,21 @@ curl https://gophish.example.com/api/scanner/findings \
 - [ ] Review scan logs for anomalies
 - [ ] Check Caddy certificate validity (auto-renewed by Let's Encrypt)
 - [ ] Monitor disk usage: `df -h`
-- [ ] Update ProjectDiscovery tools:
+- [ ] Update ProjectDiscovery tools (this rebuilds the image, since the binaries are installed
+  at build time, not via a writable container path):
   ```bash
-  docker-compose exec vantage-core go install -u github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+  docker compose build --no-cache vantage-core && docker compose up -d
   ```
 
 #### Monthly
 - [ ] Backup databases
 - [ ] Review Gophish campaign results
 - [ ] Rotate API keys (regenerate in Gophish UI)
-- [ ] Update Docker images: `docker-compose pull && docker-compose up -d`
+- [ ] Update Docker images: `docker compose pull && docker compose up -d`
 
 #### Quarterly
 - [ ] Security audit of configurations
-- [ ] Review Postfix relay settings
+- [ ] Check sending IP against DNSBLs (e.g. mxtoolbox.com blacklist check) and DMARC reports
 - [ ] Assess storage usage and retention policy
 
 ### Incident Response
@@ -450,10 +507,10 @@ curl https://gophish.example.com/api/scanner/findings \
 **Scan Stuck/Frozen:**
 ```bash
 # Check status
-docker-compose exec vantage-core curl http://localhost:3333/api/scanner/status
+docker compose exec vantage-core curl http://localhost:3333/api/scanner/status
 
 # If running=true but appears hung, restart:
-docker-compose restart vantage-core
+docker compose restart vantage-core
 ```
 
 **High Memory Usage:**
@@ -471,14 +528,18 @@ deploy:
 **Phishing Emails Not Delivering:**
 ```bash
 # Check Postfix queue
-docker-compose exec postfix postqueue -p
+docker compose exec postfix postqueue -p
 
 # View Postfix logs
-docker-compose logs postfix | grep error
+docker compose logs postfix | grep error
 
 # Force queue flush
-docker-compose exec postfix postfix flush
+docker compose exec postfix postfix flush
 ```
+
+If the queue is clear but mail still isn't arriving, see **Step 6.5: Mail (Direct Sending)** —
+most delivery failures with direct sending are outbound port 25 being blocked by the VPS
+provider, a missing/mismatched PTR record, or no SPF/DKIM record yet.
 
 ---
 
@@ -499,16 +560,16 @@ echo "# Vantage Security Report - $(date +%Y-%m-%d)"
 echo ""
 
 # Stats
-curl -s https://gophish.example.com/api/scanner/stats \
-  -H "X-API-KEY: $API_KEY" \
-  -u admin:$PASSWORD | \
+curl -s https://admin.example.com/api/scanner/stats \
+  -b "vantage_access=authorized" \
+  -H "X-API-KEY: $API_KEY" | \
   jq 'to_entries | .[] | "- \(.key): \(.value)"'
 
 echo ""
 echo "## Critical Findings"
-curl -s "https://gophish.example.com/api/scanner/findings?severity=critical" \
-  -H "X-API-KEY: $API_KEY" \
-  -u admin:$PASSWORD | \
+curl -s "https://admin.example.com/api/scanner/findings?severity=critical" \
+  -b "vantage_access=authorized" \
+  -H "X-API-KEY: $API_KEY" | \
   jq '.[] | "- [\(.name)](\(.target)) - \(.detail)"'
 ```
 
@@ -528,14 +589,14 @@ Add to Gophish config.json:
 
 - [ ] Change default Gophish API key
 - [ ] Enable HTTPS with valid certificates (Let's Encrypt via Caddy)
-- [ ] Use strong Caddy password
-- [ ] Restrict Docker port exposure (only 80/443 public)
-- [ ] Enable Postfix relay authentication
-- [ ] Use VPN for internal network scanning
+- [ ] Set `ADMIN_PASS_HASH` for Caddy Basic Auth in front of the admin domain
+- [ ] Restrict Docker port exposure (only 80/443/9090 public; admin port 3333 stays on 127.0.0.1)
+- [ ] If sending mail directly: SPF, DKIM, DMARC (`p=quarantine`/`reject` once confirmed working) and a matching PTR record
+- [ ] Use the Chisel reverse tunnel (not exposing internal IPs directly) for internal network scanning
 - [ ] Implement rate limiting for API
 - [ ] Setup audit logs (Caddy logging)
 - [ ] Regular backups (encrypted storage)
-- [ ] Monitor for unauthorized access logs
+- [ ] Monitor for unauthorized access logs (404s against `ADMIN_DOMAIN` from the WAF rule are expected noise — bots probing; repeated hits on the real secret path are the signal to watch)
 
 ---
 
@@ -545,24 +606,24 @@ Add to Gophish config.json:
 
 ```bash
 # Check if services running
-docker-compose ps
+docker compose ps
 
 # If not, start:
-docker-compose up -d
+docker compose up -d
 
 # Check Caddy logs for routing errors
-docker-compose logs caddy
+docker compose logs caddy
 ```
 
 ### Issue: Scanner Not Working
 
 ```bash
 # Verify tools are installed
-docker-compose exec vantage-core which nuclei subfinder httpx
+docker compose exec vantage-core which nuclei subfinder httpx
 
-# If missing, rebuild:
-docker-compose build --no-cache
-docker-compose up -d
+# If missing, rebuild (binaries are baked in at build time, not installable at runtime):
+docker compose build --no-cache vantage-core
+docker compose up -d
 
 # Check scanner status
 curl http://localhost:3333/api/scanner/status
@@ -572,35 +633,43 @@ curl http://localhost:3333/api/scanner/status
 
 ```bash
 # Verify Postfix is running
-docker-compose logs postfix
+docker compose logs postfix
 
 # Check mail queue
-docker-compose exec postfix postqueue -p
+docker compose exec postfix postqueue -p
 
-# Test SMTP connectivity
-docker-compose exec vantage-core telnet postfix 25
+# Test SMTP connectivity (the runtime image has no telnet; use bash's /dev/tcp instead)
+docker compose exec vantage-core bash -c 'exec 3<>/dev/tcp/postfix/25 && cat <&3'
 ```
 
 ### Issue: WebSocket Connection Failed
 
+Caddy's `reverse_proxy` handles WebSocket upgrades automatically in v2 — this is almost always
+a missing/incorrect `Host` header from a client, or another proxy in front of Caddy stripping
+the `Upgrade`/`Connection` headers. Check:
 ```bash
-# Check Caddyfile WebSocket configuration
-vim Caddyfile
+docker compose logs caddy --tail=50 | grep -i upgrade
+```
+If you're behind Cloudflare proxied (orange cloud) rather than DNS only, that's also a common
+cause — Cloudflare supports WebSocket but adds another hop that can interfere; switch the
+record to DNS only (see Step 2) to rule it out.
 
 ### Issue: Basic Auth Not Working
+- The Caddy Basic Auth username is the fixed `vantage-admin` (set in `Caddyfile`), not `admin` —
+  that's the separate Gophish login.
 - Regenerate password hash:
   ```bash
   docker run --rm caddy caddy hash-password "newpassword"
   ```
-- Update `.env` with new hash
-- Restart Caddy: `docker-compose restart caddy`
+- Update `ADMIN_PASS_HASH` in `.env` with the new hash.
+- Restart Caddy: `docker compose restart caddy`
 
 ### Issue: Reverse Tunnel (tun0) Not Appearing
-- Ensure Vantage container is in **privileged mode** or has `NET_ADMIN` + `/dev/net/tun`.
-- Restart: `docker-compose up -d --force-recreate`.
+- Ensure Vantage container has `cap_add: NET_ADMIN, NET_RAW` and `/dev/net/tun` device mapped
+  (already set in `docker-compose.yml`; don't remove them).
+- Restart: `docker compose up -d --force-recreate`.
 - Check if Chisel server is started in the Dashboard (Scanner tab).
 - See [REVERSE_TUNNEL_GUIDE.md](REVERSE_TUNNEL_GUIDE.md) for full steps.
-```
 
 ---
 
