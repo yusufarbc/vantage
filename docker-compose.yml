@@ -58,6 +58,9 @@ services:
       # Gophish Admin
       - GOPHISH_ADMIN_BIND=0.0.0.0:3333
       - GOPHISH_ADMIN_TLS=false
+      # Set on first run so the initial admin password is known up front
+      # instead of having to be grepped out of container logs.
+      - GOPHISH_INITIAL_ADMIN_PASSWORD=${GOPHISH_INITIAL_ADMIN_PASSWORD:-}
 
       # SMTP Relay (Postfix)
       - SMTP_HOST=postfix

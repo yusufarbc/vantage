@@ -27,9 +27,6 @@ reports, which had gone stale and contradicted each other.
 - Single concurrent scan per target (lock-based) — no scan queue yet.
 - SQLite is single-writer; fine for typical team usage, not for high-concurrency multi-tenant
   deployments.
-- Existing tracked `.go` files still have CRLF line endings baked into their git blobs (predates
-  this cleanup); `.gitattributes` now prevents new commits from reintroducing this, but a
-  repo-wide renormalization hasn't been done.
 - GitHub Actions has not run on this fork yet — forks have workflows disabled by default and the
   repository owner needs to enable them once from the Actions tab.
 

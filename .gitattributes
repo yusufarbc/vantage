@@ -1,6 +1,6 @@
-# Normalize line endings for source files so `gofmt`/CI behave the same
-# regardless of contributor OS. (Existing tracked files are NOT
-# retroactively renormalized here — see doc/CHANGELOG.md.)
+# Force LF for source files regardless of contributor OS/editor settings,
+# so a Windows checkout with core.autocrlf=true can't accidentally commit
+# CRLF (the repository's line endings are LF today; this just keeps it that way).
 *.go text eol=lf
 go.mod text eol=lf
 go.sum text eol=lf
