@@ -65,6 +65,9 @@ services:
       # Set on first run so the initial admin password is known up front
       # instead of having to be grepped out of container logs.
       - GOPHISH_INITIAL_ADMIN_PASSWORD=${GOPHISH_INITIAL_ADMIN_PASSWORD:-}
+      # Needed so the entrypoint can set admin_server.trusted_origins —
+      # without it, every POST behind Caddy fails CSRF's referer check.
+      - ADMIN_DOMAIN=${ADMIN_DOMAIN:-localhost}
 
       # SMTP Relay (Postfix)
       - SMTP_HOST=postfix
