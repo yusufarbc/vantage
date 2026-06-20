@@ -76,6 +76,10 @@ services:
       # Reverse Tunnel (Chisel)
       - CHISEL_SERVER_PORT=9090
 
+      # System Status page: read-only container health, via the docker-proxy
+      # sidecar (never the real docker.sock — see its service comment)
+      - DOCKER_PROXY_URL=http://docker-proxy:2375
+
       # Logging
       - LOG_LEVEL=info
 
@@ -106,6 +110,8 @@ services:
 
     depends_on:
       postfix:
+        condition: service_started
+      docker-proxy:
         condition: service_started
 
     # Logging configuration
@@ -222,6 +228,36 @@ services:
         max-size: "5m"
         max-file: "2"
         labels: "service=caddy"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Docker Socket Proxy: read-only, container-list-only view of the Docker API
+  # for the System Status page. vantage-core never touches /var/run/docker.sock
+  # directly — only this proxy does, and it's locked down to GET /containers/*
+  # (CONTAINERS=1, everything else defaults to 0: no exec, no volumes, no images,
+  # no POST of any kind). A compromised vantage-core can read container health,
+  # nothing more — it can't start/stop/exec containers or escape to the host.
+  # ─────────────────────────────────────────────────────────────────────────────
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: vantage_docker_proxy
+    restart: always
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    environment:
+      - CONTAINERS=1
+      - POST=0
+
+    networks:
+      - vantage-net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+        labels: "service=docker-proxy"
 
 # ═════════════════════════════════════════════════════════════════════════════════
 # NETWORKS

@@ -3,11 +3,11 @@ package api
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	mid "github.com/yusufarbc/vantage/middleware"
 	"github.com/yusufarbc/vantage/middleware/ratelimit"
 	"github.com/yusufarbc/vantage/models"
 	"github.com/yusufarbc/vantage/worker"
-	"github.com/gorilla/mux"
 )
 
 // ServerOption is an option to apply to the API server.
@@ -115,6 +115,7 @@ func (as *Server) registerRoutes() {
 	v1.HandleFunc("/scanner/report/{id:[0-9]+}", as.DownloadScanReport).Methods("GET")
 	v1.HandleFunc("/settings/notifications", as.GetNotificationSettings).Methods("GET")
 	v1.HandleFunc("/settings/notifications", as.PostNotificationSettings).Methods("POST")
+	v1.HandleFunc("/system/status", mid.Use(as.SystemStatus, mid.RequirePermission(models.PermissionModifySystem))).Methods("GET")
 
 	// ── Health Check (unauthenticated — for external monitoring) ─────────────
 	// Registered on the root router so it bypasses RequireAPIKey middleware.

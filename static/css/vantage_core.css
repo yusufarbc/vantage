@@ -57,12 +57,22 @@
 }
 
 /* ── Base Typography ───────────────────────────────────────────── */
+html {
+    /* Fluid base size: smaller on phones, full size from tablet up */
+    font-size: clamp(15px, 0.9vw + 11px, 17px);
+}
+
 body {
     font-family: var(--font-vantage);
     background-color: var(--v-bg);
     color: var(--v-text);
     font-size: 1.125rem;
     overflow-x: hidden;
+}
+
+main {
+    max-width: 1600px;
+    margin-inline: auto;
 }
 
 code, .font-mono { font-family: var(--font-mono); }
@@ -97,22 +107,6 @@ h3 { font-size: 1.5rem !important; }
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-right: 1px solid var(--v-sidebar-border) !important;
-}
-
-.nav-logo-container {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.75rem;
-    background: linear-gradient(135deg, var(--v-accent) 0%, rgba(var(--v-accent-rgb), 0.7) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 14px rgba(var(--v-accent-rgb), 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.nav-logo-container svg {
-    color: var(--v-logo-svg) !important;
 }
 
 .nav-brand-text {
