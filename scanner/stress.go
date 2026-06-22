@@ -77,25 +77,40 @@ func RunStressTest(req StressRequest) error {
 		emitLog(fmt.Sprintf("[RESILIENCE] ▶ Stress test started tool=%s target=%s duration=%s rate=%d iface=%s", tool, req.TargetURL, req.Duration, req.Rate, req.Interface))
 
 		ctx := context.Background()
-		cmd := buildStressCommand(ctx, tool, req)
-		if cmd == nil {
+		cmds := buildStressPipeline(ctx, tool, req)
+		if len(cmds) == 0 {
 			emitLog("[RESILIENCE] unsupported stress tool")
 			return
 		}
 
-		stdout, err := cmd.StdoutPipe()
+		// Wire stdout of each stage into stdin of the next, mirroring a shell
+		// pipe (e.g. `vegeta attack | vegeta report`) without invoking a shell.
+		for i := 0; i < len(cmds)-1; i++ {
+			pipe, err := cmds[i].StdoutPipe()
+			if err != nil {
+				emitLog(fmt.Sprintf("[RESILIENCE] pipe error: %v", err))
+				return
+			}
+			cmds[i+1].Stdin = pipe
+		}
+
+		last := cmds[len(cmds)-1]
+		stdout, err := last.StdoutPipe()
 		if err != nil {
 			emitLog(fmt.Sprintf("[RESILIENCE] stdout pipe error: %v", err))
 			return
 		}
-		stderr, err := cmd.StderrPipe()
+		stderr, err := last.StderrPipe()
 		if err != nil {
 			emitLog(fmt.Sprintf("[RESILIENCE] stderr pipe error: %v", err))
 			return
 		}
-		if err := cmd.Start(); err != nil {
-			emitLog(fmt.Sprintf("[RESILIENCE] start error: %v", err))
-			return
+
+		for _, c := range cmds {
+			if err := c.Start(); err != nil {
+				emitLog(fmt.Sprintf("[RESILIENCE] start error: %v", err))
+				return
+			}
 		}
 
 		var wg sync.WaitGroup
@@ -120,8 +135,15 @@ func RunStressTest(req StressRequest) error {
 			}
 		}()
 		wg.Wait()
-		if err := cmd.Wait(); err != nil {
-			emitLog(fmt.Sprintf("[RESILIENCE] stress test ended with error: %v", err))
+
+		var waitErr error
+		for _, c := range cmds {
+			if err := c.Wait(); err != nil {
+				waitErr = err
+			}
+		}
+		if waitErr != nil {
+			emitLog(fmt.Sprintf("[RESILIENCE] stress test ended with error: %v", waitErr))
 		} else {
 			emitLog("[RESILIENCE] ✔ Stress test completed")
 		}
@@ -175,11 +197,19 @@ func firstNumericToken(v string) string {
 	return ""
 }
 
-func buildStressCommand(ctx context.Context, tool string, req StressRequest) *exec.Cmd {
-	var cmd *exec.Cmd
+// buildStressPipeline returns the sequence of processes needed to run the
+// requested stress tool. For tools like vegeta that are normally chained
+// through a shell pipe (attack | report), the pipe is built natively with
+// os/exec instead of interpolating user-controlled fields into a shell
+// command string, which would otherwise allow command injection via
+// req.TargetURL/req.Duration.
+func buildStressPipeline(ctx context.Context, tool string, req StressRequest) []*exec.Cmd {
+	var cmds []*exec.Cmd
 	switch tool {
 	case "bombardier":
-		cmd = exec.CommandContext(ctx, "bombardier", "-d", req.Duration, "-r", strconv.Itoa(req.Rate), "-c", "32", req.TargetURL)
+		cmds = []*exec.Cmd{
+			exec.CommandContext(ctx, "bombardier", "-d", req.Duration, "-r", strconv.Itoa(req.Rate), "-c", "32", req.TargetURL),
+		}
 	case "hey":
 		// Approximate by requests = rate * durationSeconds
 		durationSeconds := 60
@@ -187,14 +217,17 @@ func buildStressCommand(ctx context.Context, tool string, req StressRequest) *ex
 			durationSeconds = int(d.Seconds())
 		}
 		requests := req.Rate * durationSeconds
-		cmd = exec.CommandContext(ctx, "hey", "-n", strconv.Itoa(requests), "-c", "32", req.TargetURL)
+		cmds = []*exec.Cmd{
+			exec.CommandContext(ctx, "hey", "-n", strconv.Itoa(requests), "-c", "32", req.TargetURL),
+		}
 	default:
-		// vegeta wrapper through shell to keep attack/report pipeline simple.
-		bashCmd := fmt.Sprintf("echo 'GET %s' | vegeta attack -duration=%s -rate=%d | vegeta report", req.TargetURL, req.Duration, req.Rate)
-		cmd = exec.CommandContext(ctx, "bash", "-lc", bashCmd)
+		attack := exec.CommandContext(ctx, "vegeta", "attack", "-duration="+req.Duration, "-rate="+strconv.Itoa(req.Rate))
+		attack.Stdin = strings.NewReader("GET " + req.TargetURL + "\n")
+		report := exec.CommandContext(ctx, "vegeta", "report")
+		cmds = []*exec.Cmd{attack, report}
 	}
 
-	if cmd != nil {
+	for _, cmd := range cmds {
 		path, err := exec.LookPath(cmd.Args[0])
 		if err != nil {
 			emitLog(fmt.Sprintf("[ERROR] stress tool not found in PATH: %s", cmd.Args[0]))
@@ -202,5 +235,5 @@ func buildStressCommand(ctx context.Context, tool string, req StressRequest) *ex
 		}
 		cmd.Path = path
 	}
-	return cmd
+	return cmds
 }
