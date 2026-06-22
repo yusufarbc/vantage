@@ -114,6 +114,14 @@ fi
 info "Building images (this includes compiling the ProjectDiscovery toolchain — can take several minutes the first time)..."
 $COMPOSE build
 
+# vantage-core runs as a non-root user; the bind-mounted ./vantage_data dir is
+# created by Docker as root on first run, which makes the container fail with
+# "Permission denied" writing the sqlite db. Pre-create it owned by the same
+# uid:gid the image's 'vantage' user has.
+mkdir -p ./vantage_data
+VANTAGE_UID_GID=$(docker run --rm --entrypoint id ghcr.io/yusufarbc/vantage:latest -u vantage):$(docker run --rm --entrypoint id ghcr.io/yusufarbc/vantage:latest -g vantage)
+chown -R "$VANTAGE_UID_GID" ./vantage_data 2>/dev/null || warn "Could not chown ./vantage_data (not running as root?) — vantage-core may fail to write its database."
+
 info "Starting services..."
 $COMPOSE up -d
 

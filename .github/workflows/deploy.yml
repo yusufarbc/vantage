@@ -58,11 +58,12 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ACTOR: ${{ github.actor }}
+          CORE_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: GHCR_TOKEN,GHCR_ACTOR
+          envs: GHCR_TOKEN,GHCR_ACTOR,CORE_IMAGE
           script: |
             set -e
 
@@ -77,6 +78,12 @@ jobs:
 
             echo "==> Pulling prebuilt images (no local build — VPS has no SSD)..."
             docker compose pull
+
+            echo "==> Ensuring ./vantage_data is owned by the container's non-root user..."
+            mkdir -p ./vantage_data
+            VANTAGE_UID=$(docker run --rm --entrypoint id "$CORE_IMAGE" -u vantage)
+            VANTAGE_GID=$(docker run --rm --entrypoint id "$CORE_IMAGE" -g vantage)
+            chown -R "$VANTAGE_UID:$VANTAGE_GID" ./vantage_data
 
             echo "==> Restarting stack..."
             docker compose up -d --remove-orphans

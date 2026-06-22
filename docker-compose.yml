@@ -65,6 +65,9 @@ services:
       # Set on first run so the initial admin password is known up front
       # instead of having to be grepped out of container logs.
       - GOPHISH_INITIAL_ADMIN_PASSWORD=${GOPHISH_INITIAL_ADMIN_PASSWORD:-}
+      # Needed so the entrypoint can set admin_server.trusted_origins —
+      # without it, every POST behind Caddy fails CSRF's referer check.
+      - ADMIN_DOMAIN=${ADMIN_DOMAIN:-localhost}
 
       # SMTP Relay (Postfix)
       - SMTP_HOST=postfix
@@ -73,18 +76,25 @@ services:
       # Reverse Tunnel (Chisel)
       - CHISEL_SERVER_PORT=9090
 
+      # System Status page: read-only container health, via the docker-proxy
+      # sidecar (never the real docker.sock — see its service comment)
+      - DOCKER_PROXY_URL=http://docker-proxy:2375
+
       # Logging
       - LOG_LEVEL=info
 
-    # Resource limits (prevent runaway resource usage)
+    # Resource limits (prevent runaway resource usage). Defaults assume the
+    # documented minimum spec (4 CPU / 8GB RAM). On smaller VPS, override
+    # CORE_CPU_LIMIT/CORE_CPU_RESERVATION/CORE_MEM_LIMIT/CORE_MEM_RESERVATION
+    # in .env — Docker rejects a 'cpus' value above the host's actual core count.
     deploy:
       resources:
         limits:
-          cpus: '4'
-          memory: 4G
+          cpus: '${CORE_CPU_LIMIT:-4}'
+          memory: ${CORE_MEM_LIMIT:-4G}
         reservations:
-          cpus: '2'
-          memory: 2G
+          cpus: '${CORE_CPU_RESERVATION:-2}'
+          memory: ${CORE_MEM_RESERVATION:-2G}
 
     # Health check: Ensure service is responding
     healthcheck:
@@ -100,6 +110,8 @@ services:
 
     depends_on:
       postfix:
+        condition: service_started
+      docker-proxy:
         condition: service_started
 
     # Logging configuration
@@ -138,15 +150,15 @@ services:
       - OPENDKIM_DOMAINS=${MAIL_DOMAIN:-vantage.local}
       - OPENDKIM_RequireSafeKeys=no
 
-    # Resource limits
+    # Resource limits — see CORE_CPU_LIMIT comment above for the override pattern
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '${POSTFIX_CPU_LIMIT:-1}'
+          memory: ${POSTFIX_MEM_LIMIT:-512M}
         reservations:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '${POSTFIX_CPU_RESERVATION:-0.5}'
+          memory: ${POSTFIX_MEM_RESERVATION:-256M}
 
     healthcheck:
       test: [ "CMD", "postfix", "status" ]
@@ -216,6 +228,36 @@ services:
         max-size: "5m"
         max-file: "2"
         labels: "service=caddy"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Docker Socket Proxy: read-only, container-list-only view of the Docker API
+  # for the System Status page. vantage-core never touches /var/run/docker.sock
+  # directly — only this proxy does, and it's locked down to GET /containers/*
+  # (CONTAINERS=1, everything else defaults to 0: no exec, no volumes, no images,
+  # no POST of any kind). A compromised vantage-core can read container health,
+  # nothing more — it can't start/stop/exec containers or escape to the host.
+  # ─────────────────────────────────────────────────────────────────────────────
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: vantage_docker_proxy
+    restart: always
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    environment:
+      - CONTAINERS=1
+      - POST=0
+
+    networks:
+      - vantage-net
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+        labels: "service=docker-proxy"
 
 # ═════════════════════════════════════════════════════════════════════════════════
 # NETWORKS

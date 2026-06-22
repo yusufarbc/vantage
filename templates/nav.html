@@ -81,16 +81,9 @@
     
     <!-- Brand Header -->
     <div class="h-16 flex items-center px-5 border-b border-vantage-border shrink-0">
-        <div class="flex items-center gap-3 w-full">
-            <div class="nav-logo-container">
-                <svg class="w-5 h-5 text-vantage-bg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-            </div>
-            <div class="flex flex-col flex-1">
-                <span class="nav-brand-text">Vantage</span>
-                <span class="text-[10px] font-mono text-vantage-accent/70 font-bold tracking-[0.15em] uppercase">Security Ops Hub</span>
-            </div>
+        <div class="flex flex-col w-full">
+            <span class="nav-brand-text">Vantage</span>
+            <span class="text-[10px] font-mono text-vantage-accent/70 font-bold tracking-[0.15em] uppercase">Security Ops Hub</span>
         </div>
     </div>
 
@@ -200,6 +193,7 @@
                     </div>
                 </a>
                 {{if .ModifySystem}}
+                <a href="/?tab=system-status" data-nav="system-status" class="nav-subitem">System Status</a>
                 <a href="/users" data-nav="users" class="nav-subitem">User Management</a>
                 <a href="/webhooks" data-nav="webhooks" class="nav-subitem">Webhooks</a>
                 {{end}}

@@ -54,7 +54,13 @@ initialize_config() {
     local phish_listen="${PHISH_LISTEN:-0.0.0.0:8080}"
     local migrations_prefix="${MIGRATIONS_PREFIX:-/opt/vantage/migrations/db_}"
     local chisel_port="${CHISEL_SERVER_PORT:-9090}"
-    
+    # gorilla/handlers' ProxyHeaders sets r.URL.Scheme from X-Forwarded-Proto
+    # but never sets r.URL.Host, so gorilla/csrf's same-origin check on HTTPS
+    # requests always fails behind a reverse proxy (Caddy) — every POST to the
+    # admin panel gets "Forbidden - referer invalid". trusted_origins is the
+    # library's own escape hatch for exactly this case.
+    local admin_domain="${ADMIN_DOMAIN:-localhost}"
+
     # Use jq to securely and correctly update keys in the config JSON
     jq \
       --arg db_path "$db_path" \
@@ -62,9 +68,11 @@ initialize_config() {
       --arg admin_listen "$admin_listen" \
       --arg phish_listen "$phish_listen" \
       --arg chisel_port "$chisel_port" \
-      '.db_path = $db_path | 
+      --arg admin_domain "$admin_domain" \
+      '.db_path = $db_path |
        .migrations_prefix = $migrations_prefix |
        .admin_server.listen_url = $admin_listen |
+       .admin_server.trusted_origins = [$admin_domain] |
        .phish_server.listen_url = $phish_listen |
        .chisel_server_port = $chisel_port' \
       "$src_config" > "$VANTAGE_CONFIG_PATH"
