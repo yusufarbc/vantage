@@ -14,14 +14,12 @@ import (
 	"bitbucket.org/liamstask/goose/lib/goose"
 
 	mysql "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/yusufarbc/vantage/auth"
 	"github.com/yusufarbc/vantage/config"
 	log "github.com/yusufarbc/vantage/logger"
-	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
 )
-
-
 
 var db *gorm.DB
 var conf *config.Config
@@ -206,7 +204,7 @@ func Setup(c *config.Config) error {
 		db.Exec("PRAGMA journal_mode=WAL;")
 		db.Exec("PRAGMA synchronous=NORMAL;")
 		db.Exec("PRAGMA busy_timeout=30000;") // Increased to 30s for heavy PD tool loads
-		db.Exec("PRAGMA cache_size=-64000;") // 64MB cache
+		db.Exec("PRAGMA cache_size=-64000;")  // 64MB cache
 		db.Exec("PRAGMA temp_store=MEMORY;")
 		db.Exec("PRAGMA mmap_size=268435456;") // 256MB MMAP for faster reads
 	} else {

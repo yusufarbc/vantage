@@ -6,9 +6,9 @@ import (
 	"net/mail"
 	"time"
 
-	log "github.com/yusufarbc/vantage/logger"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
+	log "github.com/yusufarbc/vantage/logger"
 )
 
 // Group contains the fields needed for a user -> group mapping

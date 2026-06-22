@@ -39,3 +39,4 @@ vantage_data/
 
 # VPS credentials — never commit, this repo is public
 vps.txt
+.claude/

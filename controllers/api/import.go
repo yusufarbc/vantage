@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jordan-wright/email"
 	"github.com/yusufarbc/vantage/dialer"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
 	"github.com/yusufarbc/vantage/util"
-	"github.com/jordan-wright/email"
 )
 
 type cloneRequest struct {

@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
 	"github.com/yusufarbc/vantage/pkg/network"
-	"github.com/gorilla/websocket"
 )
 
 // ── WebSocket Support for Live Scanner Logs ────────────────────────────────────
@@ -167,7 +167,9 @@ func StopScan(scanID uint) error {
 	activeScansMu.Lock()
 	cancel, ok := activeScans[scanID]
 	activeScansMu.Unlock()
-	if !ok { return fmt.Errorf("no active scan found for ID %d", scanID) }
+	if !ok {
+		return fmt.Errorf("no active scan found for ID %d", scanID)
+	}
 	cancel()
 	UnregisterScan(scanID)
 	_ = models.UpdateScanTaskProgress(scanID, "stopped", 0)
@@ -202,9 +204,13 @@ func InitDefaultService() {
 }
 
 func (s *VantageScanService) RunScannerTool(userID int64, scanID uint, toolName, target, ifaceName string, opts models.ScanOptions) error {
-	if err := ensureInterfaceForScan(toolName, target, ifaceName); err != nil { return err }
-	if err := s.State.AcquireLock(toolName, target); err != nil { return err }
-	
+	if err := ensureInterfaceForScan(toolName, target, ifaceName); err != nil {
+		return err
+	}
+	if err := s.State.AcquireLock(toolName, target); err != nil {
+		return err
+	}
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -217,7 +223,7 @@ func (s *VantageScanService) RunScannerTool(userID int64, scanID uint, toolName,
 
 		_ = models.UpdateScanTaskProgress(scanID, "running", 20)
 		args := buildScannerArgs(toolName, target, ifaceName, opts)
-		
+
 		// Structured logging with slog
 		log := logger.With("task_id", scanID, "tool", toolName, "target", target, "interface", ifaceName)
 		log.Info("Starting scanner tool execution")
@@ -255,7 +261,7 @@ func (s *VantageScanService) RunScannerTool(userID int64, scanID uint, toolName,
 			_ = models.UpdateScanTaskProgress(scanID, "failed", 0)
 			return
 		}
-		
+
 		_ = models.UpdateScanTaskProgress(scanID, "running", 90)
 		log.Info("Scanner tool execution finished")
 		emitLog(fmt.Sprintf("[VANTAGE] ✔ %s finished", strings.ToUpper(toolName)))
@@ -264,8 +270,12 @@ func (s *VantageScanService) RunScannerTool(userID int64, scanID uint, toolName,
 }
 
 func (s *VantageScanService) RunDiscovery(userID int64, scanID uint, target, ifaceName string, opts models.ScanOptions) error {
-	if err := ensureInterfaceForScan("discovery", target, ifaceName); err != nil { return err }
-	if err := s.State.AcquireLock("discovery", target); err != nil { return err }
+	if err := ensureInterfaceForScan("discovery", target, ifaceName); err != nil {
+		return err
+	}
+	if err := s.State.AcquireLock("discovery", target); err != nil {
+		return err
+	}
 
 	go func() {
 		defer func() {
@@ -286,36 +296,52 @@ func (s *VantageScanService) RunDiscovery(userID int64, scanID uint, target, ifa
 		emitLog("[VANTAGE] Phase 1a — Subdomain Discovery (Subfinder)")
 		subArgs := buildScannerArgs("subfinder", target, ifaceName, opts)
 		subs, _ := s.Executor.Collect(ctx, userID, "subfinder", target, ifaceName, subArgs)
-		if ctx.Err() != nil { return }
-		
+		if ctx.Err() != nil {
+			return
+		}
+
 		emitLog("[VANTAGE] Phase 1b — DNS Resolution & Wildcard Filtering (DNSx)")
 		// DNSx resolution for discovered subdomains
 		dnsTargets := deduplicateTargets(append(subs, target))
 		dnsArgs := append([]string{"dnsx", "-json", "-silent", "-wd", target}, targetsToArgs("-d", dnsTargets)...)
 		resolved, _ := s.Executor.Collect(ctx, userID, "dnsx", target, ifaceName, dnsArgs)
-		if ctx.Err() != nil { return }
-		if len(resolved) == 0 { resolved = dnsTargets }
+		if ctx.Err() != nil {
+			return
+		}
+		if len(resolved) == 0 {
+			resolved = dnsTargets
+		}
 
 		// ── PHASE 2: Network & Port Scanning ──────────────────────────────────
 		_ = models.UpdateScanTaskProgress(scanID, "running", 25)
 		emitLog(fmt.Sprintf("[VANTAGE] Phase 2 — Port Scanning (%d targets) (Naabu)", len(resolved)))
 		naabuArgs := append([]string{"naabu", "-json", "-silent", "-top-ports", "1000"}, targetsToArgs("-host", resolved)...)
-		if ifaceName != "" { naabuArgs = append(naabuArgs, "-interface", ifaceName) }
+		if ifaceName != "" {
+			naabuArgs = append(naabuArgs, "-interface", ifaceName)
+		}
 		openPorts, _ := s.Executor.Collect(ctx, userID, "naabu", target, ifaceName, naabuArgs)
-		if ctx.Err() != nil { return }
-		if len(openPorts) == 0 { openPorts = resolved } // Fallback to IPs if no ports found
+		if ctx.Err() != nil {
+			return
+		}
+		if len(openPorts) == 0 {
+			openPorts = resolved
+		} // Fallback to IPs if no ports found
 
 		// ── PHASE 3: Surface Mapping & HTTP Probing ───────────────────────────
 		_ = models.UpdateScanTaskProgress(scanID, "running", 45)
 		emitLog(fmt.Sprintf("[VANTAGE] Phase 3a — HTTP Probing (%d targets) (Httpx)", len(openPorts)))
 		httpxArgs := append([]string{"httpx", "-json", "-silent", "-tech-detect", "-status-code"}, targetsToArgs("-u", openPorts)...)
 		liveURLs, _ := s.Executor.Collect(ctx, userID, "httpx", target, ifaceName, httpxArgs)
-		if ctx.Err() != nil { return }
+		if ctx.Err() != nil {
+			return
+		}
 
 		emitLog("[VANTAGE] Phase 3b — TLS/SSL Analysis (TLSx)")
 		tlsArgs := append([]string{"tlsx", "-json", "-silent", "-san"}, targetsToArgs("-u", openPorts)...)
 		_, _ = s.Executor.Collect(ctx, userID, "tlsx", target, ifaceName, tlsArgs)
-		if ctx.Err() != nil { return }
+		if ctx.Err() != nil {
+			return
+		}
 
 		// ── PHASE 4: Crawling & Spidering ─────────────────────────────────────
 		_ = models.UpdateScanTaskProgress(scanID, "running", 70)
@@ -323,9 +349,13 @@ func (s *VantageScanService) RunDiscovery(userID int64, scanID uint, target, ifa
 			emitLog(fmt.Sprintf("[VANTAGE] Phase 4 — Crawling & Spidering (%d URLs) (Katana)", len(liveURLs)))
 			// Limit crawling to top 10 discovery URLs to avoid infinite loops in discovery mode
 			crawlTargets := liveURLs
-			if len(crawlTargets) > 10 { crawlTargets = crawlTargets[:10] }
+			if len(crawlTargets) > 10 {
+				crawlTargets = crawlTargets[:10]
+			}
 			for _, url := range crawlTargets {
-				if ctx.Err() != nil { break }
+				if ctx.Err() != nil {
+					break
+				}
 				katanaArgs := []string{"katana", "-u", url, "-json", "-silent", "-jc", "-d", "2"}
 				_, _ = s.Executor.Collect(ctx, userID, "katana", target, ifaceName, katanaArgs)
 			}
@@ -337,7 +367,9 @@ func (s *VantageScanService) RunDiscovery(userID int64, scanID uint, target, ifa
 		emitLog(fmt.Sprintf("[VANTAGE] Phase 5 — Vulnerability Scanning (%d targets) (Nuclei)", len(vulnTargets)))
 		// We process nuclei one by one to better track progress and avoid massive CLI arg lists
 		for i, vTarget := range vulnTargets {
-			if ctx.Err() != nil { break }
+			if ctx.Err() != nil {
+				break
+			}
 			prog := 85 + (i * 14 / len(vulnTargets))
 			_ = models.UpdateScanTaskProgress(scanID, "running", prog)
 			nucleiArgs := []string{"nuclei", "-u", vTarget, "-json", "-silent"}
@@ -350,8 +382,12 @@ func (s *VantageScanService) RunDiscovery(userID int64, scanID uint, target, ifa
 }
 
 func (s *VantageScanService) RunTask(userID int64, scanID uint, target, ifaceName string, tools []string, opts models.ScanOptions) error {
-	if err := ensureInterfaceForScan("task", target, ifaceName); err != nil { return err }
-	if err := s.State.AcquireLock("task", target); err != nil { return err }
+	if err := ensureInterfaceForScan("task", target, ifaceName); err != nil {
+		return err
+	}
+	if err := s.State.AcquireLock("task", target); err != nil {
+		return err
+	}
 
 	go func() {
 		defer func() {
@@ -369,7 +405,9 @@ func (s *VantageScanService) RunTask(userID int64, scanID uint, target, ifaceNam
 		if opts.Parallel {
 			var wg sync.WaitGroup
 			for _, tool := range tools {
-				if ctx.Err() != nil { break }
+				if ctx.Err() != nil {
+					break
+				}
 				wg.Add(1)
 				go func(t string) {
 					defer func() {
@@ -385,7 +423,9 @@ func (s *VantageScanService) RunTask(userID int64, scanID uint, target, ifaceNam
 			wg.Wait()
 		} else {
 			for i, tool := range tools {
-				if ctx.Err() != nil { break }
+				if ctx.Err() != nil {
+					break
+				}
 				prog := 10 + (i * 80 / len(tools))
 				_ = models.UpdateScanTaskProgress(scanID, "running", prog)
 				args := buildScannerArgs(tool, target, ifaceName, opts)
@@ -399,16 +439,22 @@ func (s *VantageScanService) RunTask(userID int64, scanID uint, target, ifaceNam
 // ── Legacy Entry Points for Backward Compatibility ───────────────────────────
 
 func RunScannerTool(userID int64, scanID uint, toolName, target, ifaceName string, opts models.ScanOptions) error {
-	if DefaultScanService == nil { InitDefaultService() }
+	if DefaultScanService == nil {
+		InitDefaultService()
+	}
 	return DefaultScanService.RunScannerTool(userID, scanID, toolName, target, ifaceName, opts)
 }
 
 func RunDiscovery(userID int64, scanID uint, target, ifaceName string, opts models.ScanOptions) error {
-	if DefaultScanService == nil { InitDefaultService() }
+	if DefaultScanService == nil {
+		InitDefaultService()
+	}
 	return DefaultScanService.RunDiscovery(userID, scanID, target, ifaceName, opts)
 }
 
 func RunTask(userID int64, scanID uint, target, ifaceName string, tools []string, opts models.ScanOptions) error {
-	if DefaultScanService == nil { InitDefaultService() }
+	if DefaultScanService == nil {
+		InitDefaultService()
+	}
 	return DefaultScanService.RunTask(userID, scanID, target, ifaceName, tools, opts)
 }

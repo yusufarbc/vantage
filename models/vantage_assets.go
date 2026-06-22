@@ -13,26 +13,26 @@ import (
 
 var (
 	errTargetValueRequired = errors.New("target value is required")
-	ipv4Regex  = regexp.MustCompile(`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}$`)
-	domainRegex = regexp.MustCompile(`^(?i)([a-z0-9-]+\.)+[a-z]{2,}$`)
+	ipv4Regex              = regexp.MustCompile(`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}$`)
+	domainRegex            = regexp.MustCompile(`^(?i)([a-z0-9-]+\.)+[a-z]{2,}$`)
 )
 
 // TargetAsset stores managed scan scope for Vantage.
 // Table name is intentionally separated from Gophish's existing targets table.
 type TargetAsset struct {
-	ID               uint       `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
-	UserID           int64      `gorm:"not null;index;unique_index:idx_vantage_target_user_value" json:"user_id"`
-	Value            string     `gorm:"not null;size:512;unique_index:idx_vantage_target_user_value" json:"value"`
-	InputType        string     `gorm:"not null;size:32;index" json:"input_type"`
-	Source           string     `gorm:"size:32;index" json:"source"`
-	Tag              string     `gorm:"size:64;index" json:"tag"`
-	IsInternal       bool       `gorm:"index" json:"is_internal"`
-	LastScanned      *time.Time `json:"last_scanned,omitempty"`
-	Availability     string     `gorm:"size:16;default:'unknown';index" json:"availability"`
-	OperatingSystem  string     `gorm:"size:128" json:"operating_system"`
-	OutboundInterface string    `gorm:"size:64;index" json:"outbound_interface"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID                uint       `gorm:"primary_key;AUTO_INCREMENT" json:"id"`
+	UserID            int64      `gorm:"not null;index;unique_index:idx_vantage_target_user_value" json:"user_id"`
+	Value             string     `gorm:"not null;size:512;unique_index:idx_vantage_target_user_value" json:"value"`
+	InputType         string     `gorm:"not null;size:32;index" json:"input_type"`
+	Source            string     `gorm:"size:32;index" json:"source"`
+	Tag               string     `gorm:"size:64;index" json:"tag"`
+	IsInternal        bool       `gorm:"index" json:"is_internal"`
+	LastScanned       *time.Time `json:"last_scanned,omitempty"`
+	Availability      string     `gorm:"size:16;default:'unknown';index" json:"availability"`
+	OperatingSystem   string     `gorm:"size:128" json:"operating_system"`
+	OutboundInterface string     `gorm:"size:64;index" json:"outbound_interface"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 func (TargetAsset) TableName() string {

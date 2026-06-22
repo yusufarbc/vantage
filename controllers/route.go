@@ -11,6 +11,11 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
+	"github.com/gorilla/csrf"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
+	"github.com/jordan-wright/unindexed"
 	"github.com/yusufarbc/vantage/auth"
 	"github.com/yusufarbc/vantage/config"
 	ctx "github.com/yusufarbc/vantage/context"
@@ -22,11 +27,6 @@ import (
 	"github.com/yusufarbc/vantage/scanner"
 	"github.com/yusufarbc/vantage/util"
 	"github.com/yusufarbc/vantage/worker"
-	"github.com/gorilla/csrf"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
-	"github.com/jordan-wright/unindexed"
 )
 
 // AdminServerOption is a functional option that is used to configure the

@@ -5,10 +5,10 @@ import (
 	"net/url"
 	"time"
 
-	log "github.com/yusufarbc/vantage/logger"
-	"github.com/yusufarbc/vantage/webhook"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
+	log "github.com/yusufarbc/vantage/logger"
+	"github.com/yusufarbc/vantage/webhook"
 )
 
 // Campaign is a struct representing a created campaign

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/csrf"
 	ctx "github.com/yusufarbc/vantage/context"
 	"github.com/yusufarbc/vantage/models"
-	"github.com/gorilla/csrf"
 )
 
 // CSRFExemptPrefixes are a list of routes that are exempt from CSRF protection

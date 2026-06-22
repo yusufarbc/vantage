@@ -11,14 +11,14 @@ import (
 
 // HealthStatus represents the structured JSON response for /api/health.
 type HealthStatus struct {
-	Status      string    `json:"status"`         // "ok" or "degraded"
-	Timestamp   time.Time `json:"timestamp"`
-	Uptime      string    `json:"uptime"`
-	DB          DBHealth  `json:"database"`
-	Network     NetHealth `json:"network"`
-	MailQueue   MailHealth `json:"mail_queue"`
-	GoVersion   string    `json:"go_version"`
-	GoroutineCount int    `json:"goroutines"`
+	Status         string     `json:"status"` // "ok" or "degraded"
+	Timestamp      time.Time  `json:"timestamp"`
+	Uptime         string     `json:"uptime"`
+	DB             DBHealth   `json:"database"`
+	Network        NetHealth  `json:"network"`
+	MailQueue      MailHealth `json:"mail_queue"`
+	GoVersion      string     `json:"go_version"`
+	GoroutineCount int        `json:"goroutines"`
 }
 
 // DBHealth holds the database connectivity state.
@@ -68,7 +68,7 @@ func (as *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	// ── Network / Tunnel health ──────────────────────────────────────────────
 	tunnelActive := network.GlobalTunnelManager().IsRunning()
 	ifaceName, tunIP, tunConnected, err := network.GlobalTunnelManager().AgentConnected()
-	
+
 	if !tunnelActive {
 		// Tunnel engine is down
 		status.Network = NetHealth{

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yusufarbc/vantage/models"
 	"github.com/jung-kurt/gofpdf"
+	"github.com/yusufarbc/vantage/models"
 )
 
 // GenerateScanReport produces a professional PDF report for a given scan task.
@@ -34,11 +34,11 @@ func GenerateScanReport(scanID uint, userID int64) ([]byte, error) {
 	// --- Header ---
 	pdf.SetFillColor(11, 15, 18) // Vantage Background Color
 	pdf.Rect(0, 0, 210, 40, "F")
-	
+
 	pdf.SetTextColor(94, 207, 136) // Vantage Accent Green
 	pdf.SetFont("Arial", "B", 24)
 	pdf.CellFormat(0, 15, "VANTAGE SECURITY REPORT", "", 1, "C", false, 0, "")
-	
+
 	pdf.SetTextColor(200, 200, 200)
 	pdf.SetFont("Arial", "I", 10)
 	pdf.CellFormat(0, 5, fmt.Sprintf("Report Generated: %s", time.Now().Format("2006-01-02 15:04:05")), "", 1, "C", false, 0, "")
@@ -49,7 +49,7 @@ func GenerateScanReport(scanID uint, userID int64) ([]byte, error) {
 	pdf.SetFont("Arial", "B", 16)
 	pdf.Cell(0, 10, "1. Executive Summary")
 	pdf.Ln(10)
-	
+
 	pdf.SetFont("Arial", "", 11)
 	summary := fmt.Sprintf("This document contains the security assessment results for target: %s. "+
 		"The scan was performed using the Vantage Security Hub using various ProjectDiscovery tools. "+
@@ -63,7 +63,7 @@ func GenerateScanReport(scanID uint, userID int64) ([]byte, error) {
 	pdf.CellFormat(40, 8, "Target", "1", 0, "L", true, 0, "")
 	pdf.SetFont("Arial", "", 11)
 	pdf.CellFormat(0, 8, scan.Target, "1", 1, "L", false, 0, "")
-	
+
 	pdf.SetFont("Arial", "B", 11)
 	pdf.CellFormat(40, 8, "Scan Mode", "1", 0, "L", true, 0, "")
 	pdf.SetFont("Arial", "", 11)
@@ -105,7 +105,7 @@ func GenerateScanReport(scanID uint, userID int64) ([]byte, error) {
 		pdf.SetTextColor(255, 255, 255)
 		pdf.SetFont("Arial", "B", 11)
 		pdf.CellFormat(30, 8, strings.ToUpper(sev), "1", 0, "C", true, 0, "")
-		
+
 		pdf.SetTextColor(50, 50, 50)
 		pdf.SetFont("Arial", "", 11)
 		pdf.CellFormat(20, 8, fmt.Sprintf("%d", count), "1", 1, "C", false, 0, "")
@@ -126,7 +126,7 @@ func GenerateScanReport(scanID uint, userID int64) ([]byte, error) {
 		pdf.SetFont("Arial", "B", 12)
 		pdf.SetFillColor(230, 230, 230)
 		pdf.CellFormat(0, 10, fmt.Sprintf("%d. %s", i+1, f.Name), "T", 1, "L", true, 0, "")
-		
+
 		pdf.SetFont("Arial", "B", 10)
 		pdf.Cell(30, 8, "Severity:")
 		pdf.SetFont("Arial", "", 10)
@@ -134,7 +134,7 @@ func GenerateScanReport(scanID uint, userID int64) ([]byte, error) {
 		pdf.SetTextColor(c[0], c[1], c[2])
 		pdf.Cell(40, 8, strings.ToUpper(f.Severity))
 		pdf.SetTextColor(50, 50, 50)
-		
+
 		pdf.SetFont("Arial", "B", 10)
 		pdf.Cell(20, 8, "Tool:")
 		pdf.SetFont("Arial", "", 10)

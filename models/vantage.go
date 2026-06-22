@@ -64,10 +64,10 @@ type VantageRiskScoring struct {
 // UserNetworkConfig stores user's preferred network interface for scanning.
 // Allows switching between default, Tailscale, VPN, or other interfaces.
 type UserNetworkConfig struct {
-	ID                uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID            uint      `gorm:"not null;uniqueIndex" json:"user_id"`
+	ID                 uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID             uint      `gorm:"not null;uniqueIndex" json:"user_id"`
 	PreferredInterface string    `gorm:"default:'default'" json:"preferred_interface"`
 	AllowedInterfaces  JSONList  `gorm:"type:text" json:"allowed_interfaces"`
-	CreatedAt         time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt         time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	CreatedAt          time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt          time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }

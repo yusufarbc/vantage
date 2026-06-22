@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/yusufarbc/vantage/config"
 	ctx "github.com/yusufarbc/vantage/context"
 	log "github.com/yusufarbc/vantage/logger"
@@ -14,7 +15,6 @@ import (
 	"github.com/yusufarbc/vantage/notifier"
 	"github.com/yusufarbc/vantage/reporting"
 	"github.com/yusufarbc/vantage/scanner"
-	"github.com/gorilla/mux"
 	"time"
 )
 
@@ -53,7 +53,7 @@ func (as *Server) StartScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uid := ctx.Get(r, "user_id").(int64)
-	
+
 	// Determine Mode
 	mode := "task"
 	if len(req.Tools) == 1 && req.Tools[0] != "task" {
@@ -273,10 +273,10 @@ func (as *Server) PostNotificationSettings(w http.ResponseWriter, r *http.Reques
 
 	c := config.GetConfig()
 	c.Notifications = &req
-	
+
 	// Update the notifier package state
 	notifier.Setup(c.Notifications)
-	
+
 	log.Infof("Notification settings updated by user")
 	JSONResponse(w, models.Response{Success: true, Message: "notification settings updated"}, http.StatusOK)
 }
