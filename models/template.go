@@ -5,8 +5,8 @@ import (
 	"net/mail"
 	"time"
 
-	log "github.com/yusufarbc/vantage/logger"
 	"github.com/jinzhu/gorm"
+	log "github.com/yusufarbc/vantage/logger"
 )
 
 // Template models hold the attributes for an email template to be sent to targets

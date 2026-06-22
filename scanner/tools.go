@@ -51,7 +51,7 @@ type NaabuTool struct{}
 func (t *NaabuTool) Name() string { return "naabu" }
 func (t *NaabuTool) BuildArgs(target, ifaceName string, opts models.ScanOptions) []string {
 	args := []string{"naabu", "-host", target, "-json", "-silent"}
-	
+
 	switch opts.NaabuPorts {
 	case "top100":
 		args = append(args, "-top-ports", "100")
@@ -146,17 +146,17 @@ type NucleiTool struct{}
 func (t *NucleiTool) Name() string { return "nuclei" }
 func (t *NucleiTool) BuildArgs(target, ifaceName string, opts models.ScanOptions) []string {
 	args := []string{"nuclei", "-u", target, "-json", "-silent"}
-	
+
 	if len(opts.NucleiTags) > 0 {
 		args = append(args, "-tags", strings.Join(opts.NucleiTags, ","))
 	}
-	
+
 	if len(opts.NucleiSeverities) > 0 {
 		args = append(args, "-severity", strings.Join(opts.NucleiSeverities, ","))
 	} else {
 		args = append(args, "-severity", "critical,high,medium,low,info")
 	}
-	
+
 	return args
 }
 func (t *NucleiTool) ExtractTarget(obj map[string]interface{}) string {
@@ -174,38 +174,46 @@ func (t *NucleiTool) IsJSONLOutput() bool     { return true }
 // ── Phase 6: OSINT & Other Tools ─────────────────────────────────────────────
 
 type UncoverTool struct{}
+
 func (t *UncoverTool) Name() string { return "uncover" }
 func (t *UncoverTool) BuildArgs(target, ifaceName string, opts models.ScanOptions) []string {
 	return []string{"uncover", "-q", target, "-json", "-silent"}
 }
 func (t *UncoverTool) ExtractTarget(obj map[string]interface{}) string {
-	if ip, ok := obj["ip"].(string); ok && ip != "" { return ip }
+	if ip, ok := obj["ip"].(string); ok && ip != "" {
+		return ip
+	}
 	return ""
 }
 func (t *UncoverTool) SupportsInterface() bool { return false }
 func (t *UncoverTool) IsJSONLOutput() bool     { return true }
 
 type CloudlistTool struct{}
+
 func (t *CloudlistTool) Name() string { return "cloudlist" }
 func (t *CloudlistTool) BuildArgs(target, ifaceName string, opts models.ScanOptions) []string {
 	return []string{"cloudlist", "-json", "-silent"}
 }
 func (t *CloudlistTool) ExtractTarget(obj map[string]interface{}) string {
-	if artifact, ok := obj["artifact"].(string); ok && artifact != "" { return artifact }
+	if artifact, ok := obj["artifact"].(string); ok && artifact != "" {
+		return artifact
+	}
 	return ""
 }
 func (t *CloudlistTool) SupportsInterface() bool { return false }
 func (t *CloudlistTool) IsJSONLOutput() bool     { return true }
 
 type ASNMapTool struct{}
+
 func (t *ASNMapTool) Name() string { return "asnmap" }
 func (t *ASNMapTool) BuildArgs(target, ifaceName string, opts models.ScanOptions) []string {
 	return []string{"asnmap", "-a", target, "-json", "-silent"}
 }
 func (t *ASNMapTool) ExtractTarget(obj map[string]interface{}) string {
-	if ip, ok := obj["ip"].(string); ok && ip != "" { return ip }
+	if ip, ok := obj["ip"].(string); ok && ip != "" {
+		return ip
+	}
 	return ""
 }
 func (t *ASNMapTool) SupportsInterface() bool { return false }
 func (t *ASNMapTool) IsJSONLOutput() bool     { return true }
-

@@ -49,16 +49,16 @@ var DefaultRegistry = newDefaultRegistry()
 func newDefaultRegistry() *ToolRegistry {
 	r := &ToolRegistry{tools: make(map[string]Tool)}
 	// Register in pipeline execution order.
-	r.Register(new(SubfinderTool))   // Phase 1 – OSINT / Asset Discovery
-	r.Register(new(DNSxTool))        // Phase 1 – DNS Resolution
-	r.Register(new(NaabuTool))       // Phase 2 – Port Scanning (L3 tun0 support)
-	r.Register(new(HttpxTool))       // Phase 3 – HTTP Probing
-	r.Register(new(TLSxTool))        // Phase 3 – TLS/SSL Analysis
-	r.Register(new(KatanaTool))      // Phase 4 – Crawling & Spidering
-	r.Register(new(NucleiTool))      // Phase 5 – Vulnerability Scanning (OOM-critical)
-	r.Register(new(UncoverTool))     // Phase 6 – OSINT / Internet Indexes
-	r.Register(new(CloudlistTool))   // Phase 6 – Cloud Asset Discovery
-	r.Register(new(ASNMapTool))      // Phase 6 – ASN Mapping
+	r.Register(new(SubfinderTool)) // Phase 1 – OSINT / Asset Discovery
+	r.Register(new(DNSxTool))      // Phase 1 – DNS Resolution
+	r.Register(new(NaabuTool))     // Phase 2 – Port Scanning (L3 tun0 support)
+	r.Register(new(HttpxTool))     // Phase 3 – HTTP Probing
+	r.Register(new(TLSxTool))      // Phase 3 – TLS/SSL Analysis
+	r.Register(new(KatanaTool))    // Phase 4 – Crawling & Spidering
+	r.Register(new(NucleiTool))    // Phase 5 – Vulnerability Scanning (OOM-critical)
+	r.Register(new(UncoverTool))   // Phase 6 – OSINT / Internet Indexes
+	r.Register(new(CloudlistTool)) // Phase 6 – Cloud Asset Discovery
+	r.Register(new(ASNMapTool))    // Phase 6 – ASN Mapping
 	return r
 }
 

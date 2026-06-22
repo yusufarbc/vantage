@@ -29,7 +29,7 @@ jobs:
       run: go build -v .
     
     - name: Format
-      run: diff -u <(echo -n) <(gofmt -d .)
+      run: diff -u <(echo -n) <(gofmt -d $(find . -name '*.go' -not -path './vendor/*'))
     
     - name: Test
       run: go test ./...

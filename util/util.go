@@ -18,9 +18,9 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/jordan-wright/email"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
-	"github.com/jordan-wright/email"
 )
 
 var (

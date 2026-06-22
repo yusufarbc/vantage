@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
 	ctx "github.com/yusufarbc/vantage/context"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
-	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 )
 
 // SendingProfiles handles requests for the /api/smtp/ endpoint

@@ -57,7 +57,7 @@ func (e *DefaultExecutor) Execute(ctx context.Context, userID int64, toolName, t
 	go func() {
 		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
-		
+
 		// Set a 2MB capacity limit for long lines (e.g. Katana crawled pages / nuclei outputs)
 		const maxCapacity = 2 * 1024 * 1024
 		buf := make([]byte, maxCapacity)
@@ -156,7 +156,7 @@ func (e *DefaultExecutor) Collect(ctx context.Context, userID int64, parseAs, ta
 
 		tool, toolFound := DefaultRegistry.Get(parseAs)
 		scanner := bufio.NewScanner(stdout)
-		
+
 		const maxCapacity = 2 * 1024 * 1024
 		buf := make([]byte, maxCapacity)
 		scanner.Buffer(buf, maxCapacity)

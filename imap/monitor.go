@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/yusufarbc/vantage/logger"
 	"github.com/jordan-wright/email"
+	log "github.com/yusufarbc/vantage/logger"
 
 	"github.com/yusufarbc/vantage/models"
 )

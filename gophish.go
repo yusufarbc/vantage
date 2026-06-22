@@ -42,10 +42,10 @@ import (
 	"github.com/yusufarbc/vantage/middleware"
 	"github.com/yusufarbc/vantage/models"
 	"github.com/yusufarbc/vantage/notifier"
+	"github.com/yusufarbc/vantage/pkg/network"
 	"github.com/yusufarbc/vantage/scanner"
 	"github.com/yusufarbc/vantage/webhook"
 	"github.com/yusufarbc/vantage/worker"
-	"github.com/yusufarbc/vantage/pkg/network"
 )
 
 const (
@@ -136,7 +136,7 @@ func main() {
 	if *mode == "admin" || *mode == "all" {
 		go adminServer.Start()
 		go imapMonitor.Start()
-		
+
 		// Start Vantage Background Worker
 		vantageWorker := worker.NewVantageWorker()
 		vantageWorker.Start()

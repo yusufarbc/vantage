@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
 	"github.com/yusufarbc/vantage/webhook"
-	"github.com/gorilla/mux"
 )
 
 // Webhooks returns a list of webhooks, both active and disabled

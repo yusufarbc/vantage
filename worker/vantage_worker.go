@@ -21,7 +21,7 @@ func NewVantageWorker() *VantageWorker {
 // It checks for scheduled tasks every 30 seconds.
 func (vw *VantageWorker) Start() {
 	log.Info("Vantage Background Worker Started - Monitoring Scheduled Scans")
-	
+
 	// Check every 30 seconds for scheduled scans
 	ticker := time.NewTicker(30 * time.Second)
 	go func() {
@@ -46,7 +46,7 @@ func (vw *VantageWorker) processScheduledScans() {
 
 	for _, s := range scans {
 		log.Infof("Worker: Triggering scheduled scan ID=%d (Target: %s, Mode: %s)", s.ID, s.Target, s.Mode)
-		
+
 		// Reset ScheduledAt to prevent double triggers if status update fails
 		// and update status to "queued" before starting
 		err := models.UpdateScanTaskProgress(s.ID, "queued", 0)
@@ -59,7 +59,7 @@ func (vw *VantageWorker) processScheduledScans() {
 		go func(task models.Scan) {
 			var scanErr error
 			tools := task.GetToolList()
-			
+
 			opts := task.GetOptions()
 			switch task.Mode {
 			case "discovery":

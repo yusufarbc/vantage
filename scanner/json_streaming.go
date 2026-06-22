@@ -51,14 +51,15 @@ type Result struct {
 // for each successfully parsed object. The parser runs in a goroutine and returns immediately.
 //
 // Usage:
-//   parser := NewStreamingJSONParser(stdout, 512*1024*1024)
-//   parser.ParseStream(ctx, func(result *Result) {
-//       if result.Error != nil {
-//           log.Printf("[PARSE_ERROR] Line %d: %v", result.LineNum, result.Error)
-//           return
-//       }
-//       fmt.Printf("[LINE %d] Parsed: %v\n", result.LineNum, result.Data)
-//   })
+//
+//	parser := NewStreamingJSONParser(stdout, 512*1024*1024)
+//	parser.ParseStream(ctx, func(result *Result) {
+//	    if result.Error != nil {
+//	        log.Printf("[PARSE_ERROR] Line %d: %v", result.LineNum, result.Error)
+//	        return
+//	    }
+//	    fmt.Printf("[LINE %d] Parsed: %v\n", result.LineNum, result.Data)
+//	})
 func (p *StreamingJSONParser) ParseStream(handler func(*Result)) {
 	go p.parseWorker(handler)
 }
@@ -131,9 +132,9 @@ func (p *StreamingJSONParser) Stop() {
 
 // Stats returns parsing statistics.
 type ParserStats struct {
-	LinesRead   int64
-	ErrorCount  int64
-	BytesRead   int64
+	LinesRead  int64
+	ErrorCount int64
+	BytesRead  int64
 }
 
 // Stats returns current parsing statistics.
