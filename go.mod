@@ -11,10 +11,10 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gophish/gomail v0.0.0-20200818021916-1f6d0dfd512e
 	github.com/gorilla/context v1.1.1
-	github.com/gorilla/csrf v1.6.2
+	github.com/gorilla/csrf v1.7.3
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
-	github.com/gorilla/securecookie v1.1.1
+	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.2.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/jinzhu/gorm v1.9.12
@@ -22,12 +22,17 @@ require (
 	github.com/jordan-wright/unindexed v0.0.0-20181209214434-78fa79113c0f
 	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/oschwald/maxminddb-golang v1.6.0
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.9.4
 	golang.org/x/crypto v0.48.0
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405
 	modernc.org/sqlite v1.48.2 // indirect
+)
+
+require (
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/shirou/gopsutil/v3 v3.24.5
 )
 
 require (
@@ -46,12 +51,10 @@ require (
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect

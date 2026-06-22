@@ -19,7 +19,6 @@ github.com/alecthomas/units
 github.com/andybalholm/cascadia
 # github.com/dustin/go-humanize v1.0.1
 ## explicit; go 1.16
-github.com/dustin/go-humanize
 # github.com/emersion/go-imap v1.0.4
 ## explicit; go 1.13
 github.com/emersion/go-imap
@@ -47,15 +46,14 @@ github.com/go-ole/go-ole/oleutil
 github.com/go-sql-driver/mysql
 # github.com/google/uuid v1.6.0
 ## explicit
-github.com/google/uuid
 # github.com/gophish/gomail v0.0.0-20200818021916-1f6d0dfd512e
 ## explicit; go 1.13
 github.com/gophish/gomail
 # github.com/gorilla/context v1.1.1
 ## explicit
 github.com/gorilla/context
-# github.com/gorilla/csrf v1.6.2
-## explicit
+# github.com/gorilla/csrf v1.7.3
+## explicit; go 1.20
 github.com/gorilla/csrf
 # github.com/gorilla/handlers v1.4.2
 ## explicit
@@ -63,8 +61,8 @@ github.com/gorilla/handlers
 # github.com/gorilla/mux v1.7.3
 ## explicit
 github.com/gorilla/mux
-# github.com/gorilla/securecookie v1.1.1
-## explicit
+# github.com/gorilla/securecookie v1.1.2
+## explicit; go 1.20
 github.com/gorilla/securecookie
 # github.com/gorilla/sessions v1.2.0
 ## explicit
@@ -91,7 +89,6 @@ github.com/jordan-wright/unindexed
 github.com/jung-kurt/gofpdf
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 ## explicit
-github.com/konsorten/go-windows-terminal-sequences
 # github.com/kylelemons/go-gypsy v0.0.0-20160905020020-08cad365cd28
 ## explicit
 github.com/kylelemons/go-gypsy/yaml
@@ -105,25 +102,21 @@ github.com/lib/pq/scram
 github.com/lufia/plan9stats
 # github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
-github.com/mattn/go-isatty
 # github.com/mattn/go-sqlite3 v2.0.3+incompatible
 ## explicit
 github.com/mattn/go-sqlite3
 # github.com/ncruces/go-strftime v1.0.0
 ## explicit; go 1.17
-github.com/ncruces/go-strftime
 # github.com/oschwald/maxminddb-golang v1.6.0
 ## explicit; go 1.9
 github.com/oschwald/maxminddb-golang
 # github.com/pkg/errors v0.8.1
 ## explicit
-github.com/pkg/errors
 # github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c
 ## explicit; go 1.14
 github.com/power-devops/perfstat
 # github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
 ## explicit; go 1.12
-github.com/remyoudompheng/bigfft
 # github.com/shirou/gopsutil/v3 v3.24.5
 ## explicit; go 1.18
 github.com/shirou/gopsutil/v3/common
@@ -137,8 +130,8 @@ github.com/shirou/gopsutil/v3/process
 # github.com/shoenig/go-m1cpu v0.1.6
 ## explicit; go 1.20
 github.com/shoenig/go-m1cpu
-# github.com/sirupsen/logrus v1.4.2
-## explicit
+# github.com/sirupsen/logrus v1.9.4
+## explicit; go 1.17
 github.com/sirupsen/logrus
 # github.com/tklauser/go-sysconf v0.3.12
 ## explicit; go 1.13
@@ -196,40 +189,9 @@ gopkg.in/alexcesaro/quotedprintable.v3
 gopkg.in/check.v1
 # modernc.org/libc v1.70.0
 ## explicit; go 1.24.0
-modernc.org/libc
-modernc.org/libc/errno
-modernc.org/libc/fcntl
-modernc.org/libc/fts
-modernc.org/libc/grp
-modernc.org/libc/honnef.co/go/netdb
-modernc.org/libc/langinfo
-modernc.org/libc/limits
-modernc.org/libc/netdb
-modernc.org/libc/netinet/in
-modernc.org/libc/poll
-modernc.org/libc/pthread
-modernc.org/libc/pwd
-modernc.org/libc/signal
-modernc.org/libc/stdio
-modernc.org/libc/stdlib
-modernc.org/libc/sys/socket
-modernc.org/libc/sys/stat
-modernc.org/libc/sys/types
-modernc.org/libc/termios
-modernc.org/libc/time
-modernc.org/libc/unistd
-modernc.org/libc/utime
-modernc.org/libc/uuid
-modernc.org/libc/uuid/uuid
-modernc.org/libc/wctype
 # modernc.org/mathutil v1.7.1
 ## explicit; go 1.21
-modernc.org/mathutil
 # modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
-modernc.org/memory
 # modernc.org/sqlite v1.48.2
 ## explicit; go 1.25.0
-modernc.org/sqlite
-modernc.org/sqlite/lib
-modernc.org/sqlite/vtab
