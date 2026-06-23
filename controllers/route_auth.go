@@ -61,15 +61,18 @@ func (as *AdminServer) Settings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// allowedNextPrefixes is an explicit allowlist of paths "next" may redirect
+// to after login. It mirrors the routes registered in registerRoutes for a
+// logged-in user, so every legitimate same-origin "next" link keeps
+// working, while anything else (off-site, or not a real route) falls back
+// to "/".
+var allowedNextPrefixes = []string{
+	"/", "/campaigns", "/templates", "/groups", "/landing_pages",
+	"/sending_profiles", "/settings", "/users", "/webhooks",
+}
+
 func (as *AdminServer) nextOrIndex(w http.ResponseWriter, r *http.Request) {
 	next := "/"
-	allowedNext := map[string]struct{}{
-		"/":        {},
-		"/settings": {},
-		"/users":   {},
-		"/agents":  {},
-		"/streams": {},
-	}
 	parsed, err := url.Parse(r.FormValue("next"))
 	if err == nil {
 		path := parsed.EscapedPath()
@@ -83,8 +86,11 @@ func (as *AdminServer) nextOrIndex(w http.ResponseWriter, r *http.Request) {
 		if path != "" {
 			candidate = "/" + path
 		}
-		if _, ok := allowedNext[candidate]; ok {
-			next = candidate
+		for _, prefix := range allowedNextPrefixes {
+			if candidate == prefix || strings.HasPrefix(candidate, prefix+"/") {
+				next = candidate
+				break
+			}
 		}
 	}
 	http.Redirect(w, r, next, http.StatusFound)
