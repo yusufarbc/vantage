@@ -8,14 +8,17 @@ Once Docker is installed (see Step 1) and DNS points at your server (Step 2):
 cd /opt
 sudo git clone https://github.com/yusufarbc/vantage.git
 sudo chown -R $USER:$USER vantage && cd vantage
-VANTAGE_ENV=PROD ./scripts/setup.sh
+./scripts/setup.sh
 ```
 
-The script creates `.env` from `.env.example`, prompts for your domain/Let's Encrypt email, an
-optional Basic Auth password, and optional direct-mail-sending settings (`MAIL_HOSTNAME`/
+The script creates `.env` from `.env.example`, prompts for your two domains/Let's Encrypt email,
+an optional Basic Auth password, and optional direct-mail-sending settings (`MAIL_HOSTNAME`/
 `MAIL_DOMAIN` — see Step 6.5), generates the admin path secret and the initial Gophish admin
 password, then runs `docker compose build && up -d` and prints the login URL/credentials when
 done. Re-running it is safe — it only fills in values still left at their `.env.example` default.
+
+Vantage always runs targeting a real domain/VPS deployment — there is no separate "test mode";
+all configuration happens through `.env` (see [.env.example](../.env.example)).
 
 The rest of this guide covers the same steps manually, plus day-2 operations.
 
@@ -78,6 +81,13 @@ hyphen) — that's what `docker-compose-plugin` installs above.
 
 ### Step 2: Configure DNS
 
+This is the complete list of every DNS (and rDNS) record Vantage needs. Set them all up front —
+the **App** records are always required; the **Mail** records only apply if you plan to send
+phishing email directly from this server instead of through an external SMTP relay
+(Gmail/SendGrid/etc.).
+
+#### App records (always required)
+
 Vantage uses **two** domain roles, set independently in `.env` ([.env.example](../.env.example)):
 - `ADMIN_DOMAIN` — the Gophish admin dashboard/API, hidden behind the `ADMIN_PATH_SECRET` path.
 - `DOMAIN` (mapped to `PHISH_DOMAIN` in Caddy) — public-facing phishing/landing pages, no auth.
@@ -85,19 +95,30 @@ Vantage uses **two** domain roles, set independently in `.env` ([.env.example](.
 Use **two different subdomains** for these — Caddy defines them as separate site blocks, and
 pointing both at the exact same hostname makes Caddy fail to start with an "ambiguous site
 definition" error:
-```
-admin.example.com   A  1.2.3.4   (admin dashboard / API — ADMIN_DOMAIN)
-phish.example.com   A  1.2.3.4   (phishing & landing pages — DOMAIN)
-```
+
+| Record | Type | Value | Notes |
+| --- | --- | --- | --- |
+| `admin.example.com` | A | `<vps-ip>` | Admin dashboard / API — `ADMIN_DOMAIN` |
+| `phish.example.com` | A | `<vps-ip>` | Phishing & landing pages — `DOMAIN` |
 
 If you're behind Cloudflare (or another proxying DNS host), set both records to **DNS only**
 (grey cloud, not proxied). Caddy issues its own Let's Encrypt certificate via the HTTP-01
 challenge and needs to reach your server directly — an orange-cloud proxy in front of it adds
 a second TLS hop that isn't required and complicates certificate issuance.
 
-If you also plan to send mail directly from this server (no external SMTP relay), see
-**Step 6.5: Mail (Direct Sending)** below for the additional DNS records needed (PTR, SPF,
-DKIM, DMARC).
+#### Mail records (only if sending mail directly, no external relay)
+
+| Record | Type | Value | Where it's set | Notes |
+| --- | --- | --- | --- | --- |
+| `<vps-ip>` reverse | PTR/rDNS | `mail.example.com` | VPS provider's panel, **not** Cloudflare | Must match `MAIL_HOSTNAME` |
+| `mail.example.com` | A | `<vps-ip>` | DNS provider, **DNS only** | Matches `MAIL_HOSTNAME` |
+| `example.com` | TXT | `v=spf1 ip4:<vps-ip> ~all` | DNS provider, **DNS only** | SPF |
+| `_dmarc.example.com` | TXT | `v=DMARC1; p=none; rua=mailto:postmaster@example.com` | DNS provider, **DNS only** | `p=none` for testing, tighten later |
+| `mail._domainkey.example.com` | TXT | *(generated after the stack is up — see Step 6.5)* | DNS provider, **DNS only** | DKIM |
+
+Outbound port 25 must also be open on the VPS for direct sending to work — many providers block
+it by default; see Step 6.5 for how to test it. Full walkthrough of all five mail records,
+including how to fetch the DKIM value, is in **Step 6.5: Mail (Direct Sending)** below.
 
 ### Step 3: Clone & Prepare
 
@@ -172,8 +193,9 @@ docker compose ps
 ### Step 6.5: Mail (Direct Sending)
 
 If `MAIL_HOSTNAME`/`MAIL_DOMAIN` are set, Postfix sends mail straight to the internet — no
-external relay (Gmail/SendGrid/etc.) involved. This needs a few things to actually land in
-inboxes instead of spam folders or being rejected outright:
+external relay (Gmail/SendGrid/etc.) involved. The PTR, A, SPF, and DMARC records from the
+**Mail records** table in Step 2 should already be in place; this needs a couple more things
+to actually land in inboxes instead of spam folders or being rejected outright:
 
 1. **Outbound port 25 must be open.** Many VPS providers block it by default to fight spam.
    Check with your provider's control panel/support, or test from the host once it's up:
@@ -181,20 +203,8 @@ inboxes instead of spam folders or being rejected outright:
    docker compose exec postfix sh -c "echo QUIT | nc -w5 smtp.gmail.com 25"
    ```
 
-2. **PTR/rDNS record**: set the server's IP to resolve back to `MAIL_HOSTNAME` (e.g.
-   `mail.example.com`). This is configured in your VPS provider's panel, not in Cloudflare —
-   Cloudflare only controls forward DNS for your domain.
-
-3. **DNS records** (add these in Cloudflare, all **DNS only** — proxying doesn't apply to raw
-   SMTP):
-   ```
-   mail.example.com         A    <vps-ip>           (DNS only)
-   example.com              TXT  "v=spf1 ip4:<vps-ip> ~all"
-   _dmarc.example.com       TXT  "v=DMARC1; p=none; rua=mailto:postmaster@example.com"
-   ```
-   `p=none` is for testing — tighten to `quarantine`/`reject` once delivery is confirmed working.
-
-4. **DKIM**: after the stack is up, fetch the generated public key and add it as a TXT record:
+2. **DKIM**: after the stack is up, fetch the generated public key and add it as the
+   `mail._domainkey.example.com` TXT record from Step 2's table:
    ```bash
    docker compose exec postfix sh -c 'cat /etc/opendkim/keys/*/*.txt'
    ```
@@ -203,7 +213,7 @@ inboxes instead of spam folders or being rejected outright:
    stored in the `opendkim_keys` Docker volume, so they survive restarts and the DNS record
    stays valid.
 
-5. In Gophish, set the SMTP sending profile's "From" address to `...@example.com` (matching
+3. In Gophish, set the SMTP sending profile's "From" address to `...@example.com` (matching
    `MAIL_DOMAIN`) — DKIM only signs/passes if the From domain matches.
 
 ### Step 7: Initial Access
