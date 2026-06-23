@@ -113,8 +113,8 @@ func (as *Server) registerRoutes() {
 	v1.HandleFunc("/targets/import", as.ImportTargets).Methods("POST")
 	v1.HandleFunc("/mail/queue", as.MailQueueSummary).Methods("GET")
 	v1.HandleFunc("/scanner/report/{id:[0-9]+}", as.DownloadScanReport).Methods("GET")
-	v1.HandleFunc("/settings/notifications", as.GetNotificationSettings).Methods("GET")
-	v1.HandleFunc("/settings/notifications", as.PostNotificationSettings).Methods("POST")
+	v1.HandleFunc("/settings/notifications", mid.Use(as.GetNotificationSettings, mid.RequirePermission(models.PermissionModifySystem))).Methods("GET")
+	v1.HandleFunc("/settings/notifications", mid.Use(as.PostNotificationSettings, mid.RequirePermission(models.PermissionModifySystem))).Methods("POST")
 	v1.HandleFunc("/system/status", mid.Use(as.SystemStatus, mid.RequirePermission(models.PermissionModifySystem))).Methods("GET")
 
 	// ── Health Check (unauthenticated — for external monitoring) ─────────────

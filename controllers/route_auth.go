@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/csrf"
+	csrf "filippo.io/csrf/gorilla"
 	"github.com/gorilla/sessions"
 	"github.com/yusufarbc/vantage/auth"
 	ctx "github.com/yusufarbc/vantage/context"
@@ -63,11 +63,17 @@ func (as *AdminServer) Settings(w http.ResponseWriter, r *http.Request) {
 
 func (as *AdminServer) nextOrIndex(w http.ResponseWriter, r *http.Request) {
 	next := "/"
-	url, err := url.Parse(r.FormValue("next"))
+	parsed, err := url.Parse(r.FormValue("next"))
 	if err == nil {
-		path := url.EscapedPath()
+		path := parsed.EscapedPath()
+		// Strip ALL leading slashes and backslashes before re-prepending a
+		// single "/". This guarantees the result can never start with "//"
+		// or "/\", which some browsers normalize into a protocol-relative
+		// URL (e.g. "//evil.com") and would otherwise let an off-site
+		// redirect slip through despite only the path component being used.
+		path = strings.TrimLeft(path, "/\\")
 		if path != "" {
-			next = "/" + strings.TrimLeft(path, "/")
+			next = "/" + path
 		}
 	}
 	http.Redirect(w, r, next, http.StatusFound)

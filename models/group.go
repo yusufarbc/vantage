@@ -341,7 +341,10 @@ func insertTargetIntoGroup(tx *gorm.DB, t Target, gid int64) error {
 		}).Error("Invalid email")
 		return err
 	}
-	err := tx.Where(t).FirstOrCreate(&t).Error
+	// Match on all recipient fields, using explicit placeholders rather than
+	// gorm's Where(struct) form, so the query is unambiguously parameterized.
+	err := tx.Where("email = ? AND first_name = ? AND last_name = ? AND position = ?",
+		t.Email, t.FirstName, t.LastName, t.Position).FirstOrCreate(&t).Error
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"email": t.Email,

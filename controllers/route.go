@@ -15,8 +15,8 @@ import (
 	"net/http"
 	"time"
 
+	csrf "filippo.io/csrf/gorilla"
 	"github.com/NYTimes/gziphandler"
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -168,11 +168,16 @@ func (as *AdminServer) registerRoutes() {
 		csrf.TrustedOrigins(as.config.TrustedOrigins))
 	adminHandler := csrfHandler(router)
 	if !as.config.UseTLS {
-		// gorilla/csrf >=1.7.2 assumes HTTPS unless the request is explicitly
-		// marked as plaintext, to close an HTTP/HTTPS origin-confusion CSRF
-		// vector (CVE-2025-24358). Mirror the Secure(as.config.UseTLS) option
-		// above so non-TLS deployments don't have every unsafe request
-		// rejected for a missing/HTTPS-only Referer.
+		// We use filippo.io/csrf/gorilla, a drop-in replacement for
+		// github.com/gorilla/csrf, since the latter has an unpatched CVE in
+		// its TrustedOrigins handling (origins are matched on host only,
+		// implicitly trusting both their HTTP and HTTPS forms). The
+		// replacement enforces same-origin checks via Fetch metadata
+		// instead of tokens, but keeps this package's API, including
+		// assuming HTTPS unless the request is explicitly marked as
+		// plaintext. Mirror the Secure(as.config.UseTLS) option above so
+		// non-TLS deployments don't have every unsafe request rejected for
+		// a missing/HTTPS-only Referer.
 		next := adminHandler
 		adminHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))

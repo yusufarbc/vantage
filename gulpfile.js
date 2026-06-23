@@ -29,7 +29,6 @@ vendorjs = function () {
             vendor_directory + 'datamaps.min.js',
             vendor_directory + 'jquery.dataTables.min.js',
             vendor_directory + 'dataTables.bootstrap.js',
-            vendor_directory + 'datetime-moment.js',
             vendor_directory + 'jquery.ui.widget.js',
             vendor_directory + 'jquery.fileupload.js',
             vendor_directory + 'jquery.iframe-transport.js',
