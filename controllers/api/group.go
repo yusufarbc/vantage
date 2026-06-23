@@ -3,11 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	ctx "github.com/yusufarbc/vantage/context"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
@@ -34,7 +32,7 @@ func (as *Server) Groups(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_, err = models.GetGroupByName(g.Name, ctx.Get(r, "user_id").(int64))
-		if err != gorm.ErrRecordNotFound {
+		if err != models.ErrRecordNotFound {
 			JSONResponse(w, models.Response{Success: false, Message: "Group name already in use"}, http.StatusConflict)
 			return
 		}
@@ -67,7 +65,11 @@ func (as *Server) GroupsSummary(w http.ResponseWriter, r *http.Request) {
 // If the group is not valid, Group returns null.
 func (as *Server) Group(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	g, err := models.GetGroup(id, ctx.Get(r, "user_id").(int64))
 	if err != nil {
 		JSONResponse(w, models.Response{Success: false, Message: "Group not found"}, http.StatusNotFound)
@@ -112,7 +114,11 @@ func (as *Server) GroupSummary(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == "GET":
 		vars := mux.Vars(r)
-		id, _ := strconv.ParseInt(vars["id"], 0, 64)
+		id, ok := idFromVars(vars)
+		if !ok {
+			writeInvalidIDResponse(w)
+			return
+		}
 		g, err := models.GetGroupSummary(id, ctx.Get(r, "user_id").(int64))
 		if err != nil {
 			JSONResponse(w, models.Response{Success: false, Message: "Group not found"}, http.StatusNotFound)

@@ -24,6 +24,12 @@ import (
 var db *gorm.DB
 var conf *config.Config
 
+// ErrRecordNotFound is returned by model lookup functions when no matching
+// record exists. It re-exports gorm's sentinel so callers outside this
+// package (e.g. controllers) don't need to import gorm directly to check
+// for it.
+var ErrRecordNotFound = gorm.ErrRecordNotFound
+
 const MaxDatabaseConnectionAttempts int = 10
 
 // DefaultAdminUsername is the default username for the administrative user
@@ -74,10 +80,15 @@ type Response struct {
 	Data    interface{} `json:"data"`
 }
 
-// Copy of auth.GenerateSecureKey to prevent cyclic import with auth library
+// Copy of auth.GenerateSecureKey to prevent cyclic import with auth library.
+//
+// Panics if the system's CSPRNG cannot be read, since silently continuing
+// would produce a weak or all-zero key.
 func generateSecureKey() string {
 	k := make([]byte, 32)
-	io.ReadFull(rand.Reader, k)
+	if _, err := io.ReadFull(rand.Reader, k); err != nil {
+		panic(fmt.Sprintf("models: failed to read from CSPRNG: %v", err))
+	}
 	return fmt.Sprintf("%x", k)
 }
 
