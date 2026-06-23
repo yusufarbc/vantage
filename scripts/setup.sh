@@ -7,8 +7,7 @@
 # the stack.
 #
 # Usage:
-#   ./scripts/setup.sh                      interactive prompts for PROD values
-#   VANTAGE_ENV=TEST ./scripts/setup.sh      skip prompts, run local/dev mode
+#   ./scripts/setup.sh      interactive prompts for domain/email/mail settings
 #
 # Re-running is safe: it never overwrites an existing .env value that's
 # already been customized away from the .env.example default.
@@ -56,9 +55,6 @@ set_env() {
     fi
 }
 
-VANTAGE_ENV="${VANTAGE_ENV:-TEST}"
-info "VANTAGE_ENV=${VANTAGE_ENV}"
-
 if [ "${ADMIN_PATH_SECRET:-vantage-ops-secret-777}" = "vantage-ops-secret-777" ]; then
     NEW_SECRET="vantage-ops-$(random_token 12)"
     set_env ADMIN_PATH_SECRET "$NEW_SECRET"
@@ -66,42 +62,45 @@ if [ "${ADMIN_PATH_SECRET:-vantage-ops-secret-777}" = "vantage-ops-secret-777" ]
     ok "Generated a random ADMIN_PATH_SECRET (the default value is public — anyone who reads this repo knows it)"
 fi
 
-if [ "$VANTAGE_ENV" = "PROD" ]; then
-    if [ "${DOMAIN:-localhost}" = "localhost" ]; then
-        read -rp "Domain name for this deployment (e.g. vantage.example.com): " DOMAIN_INPUT
-        [ -n "$DOMAIN_INPUT" ] || fail "A real domain is required in PROD mode (Let's Encrypt needs it to issue a certificate)."
-        set_env DOMAIN "$DOMAIN_INPUT"
-        set_env ADMIN_DOMAIN "$DOMAIN_INPUT"
-        DOMAIN="$DOMAIN_INPUT"
+if [ "${DOMAIN:-localhost}" = "localhost" ]; then
+    read -rp "Public domain for phishing/landing pages (e.g. phish.example.com): " DOMAIN_INPUT
+    [ -n "$DOMAIN_INPUT" ] || fail "A real domain is required (Let's Encrypt needs it to issue a certificate)."
+    set_env DOMAIN "$DOMAIN_INPUT"
+    DOMAIN="$DOMAIN_INPUT"
+fi
+if [ "${ADMIN_DOMAIN:-localhost}" = "localhost" ]; then
+    read -rp "Admin dashboard domain, must differ from the one above (e.g. admin.example.com): " ADMIN_DOMAIN_INPUT
+    [ -n "$ADMIN_DOMAIN_INPUT" ] || fail "A real admin domain is required (Let's Encrypt needs it to issue a certificate)."
+    set_env ADMIN_DOMAIN "$ADMIN_DOMAIN_INPUT"
+    ADMIN_DOMAIN="$ADMIN_DOMAIN_INPUT"
+fi
+if [ "${CADDY_EMAIL:-admin@vantage.local}" = "admin@vantage.local" ]; then
+    read -rp "Contact email for Let's Encrypt (e.g. you@example.com): " EMAIL_INPUT
+    [ -n "$EMAIL_INPUT" ] || fail "A contact email is required."
+    set_env CADDY_EMAIL "$EMAIL_INPUT"
+fi
+if [ "${MAIL_HOSTNAME:-vantage.local}" = "vantage.local" ]; then
+    warn "MAIL_HOSTNAME/MAIL_DOMAIN are at their default — Postfix will send as 'vantage.local', which most mail servers will reject."
+    read -rp "Mail server hostname for Postfix, must match this VPS's PTR/rDNS record (e.g. mail.example.com), or leave blank to skip: " MAIL_HOSTNAME_INPUT
+    if [ -n "$MAIL_HOSTNAME_INPUT" ]; then
+        set_env MAIL_HOSTNAME "$MAIL_HOSTNAME_INPUT"
+        read -rp "Sending domain for DKIM signing, matches the Gophish 'From' address domain (e.g. example.com): " MAIL_DOMAIN_INPUT
+        [ -n "$MAIL_DOMAIN_INPUT" ] || fail "A mail domain is required when MAIL_HOSTNAME is set."
+        set_env MAIL_DOMAIN "$MAIL_DOMAIN_INPUT"
+    else
+        warn "Skipping mail setup — direct sending will likely be rejected/spam-flagged until MAIL_HOSTNAME/MAIL_DOMAIN are set."
     fi
-    if [ "${CADDY_EMAIL:-admin@vantage.local}" = "admin@vantage.local" ]; then
-        read -rp "Contact email for Let's Encrypt (e.g. you@example.com): " EMAIL_INPUT
-        [ -n "$EMAIL_INPUT" ] || fail "A contact email is required in PROD mode."
-        set_env CADDY_EMAIL "$EMAIL_INPUT"
-    fi
-    if [ "${MAIL_HOSTNAME:-vantage.local}" = "vantage.local" ]; then
-        warn "MAIL_HOSTNAME/MAIL_DOMAIN are at their default — Postfix will send as 'vantage.local', which most mail servers will reject."
-        read -rp "Mail server hostname for Postfix, must match this VPS's PTR/rDNS record (e.g. mail.example.com), or leave blank to skip: " MAIL_HOSTNAME_INPUT
-        if [ -n "$MAIL_HOSTNAME_INPUT" ]; then
-            set_env MAIL_HOSTNAME "$MAIL_HOSTNAME_INPUT"
-            read -rp "Sending domain for DKIM signing, matches the Gophish 'From' address domain (e.g. example.com): " MAIL_DOMAIN_INPUT
-            [ -n "$MAIL_DOMAIN_INPUT" ] || fail "A mail domain is required when MAIL_HOSTNAME is set."
-            set_env MAIL_DOMAIN "$MAIL_DOMAIN_INPUT"
-        else
-            warn "Skipping mail setup — direct sending will likely be rejected/spam-flagged until MAIL_HOSTNAME/MAIL_DOMAIN are set."
-        fi
-    fi
-    if [ -z "${ADMIN_PASS_HASH:-}" ]; then
-        warn "ADMIN_PASS_HASH is empty — Caddy's Basic Auth layer in front of the admin dashboard will be DISABLED."
-        read -rp "Set a Basic Auth password now? [Y/n] " ANSWER
-        if [ "${ANSWER:-Y}" != "n" ] && [ "${ANSWER:-Y}" != "N" ]; then
-            read -rsp "Password: " ADMIN_PASSWORD; echo
-            HASH=$(docker run --rm caddy caddy hash-password --plaintext "$ADMIN_PASSWORD")
-            set_env ADMIN_PASS_HASH "$HASH"
-            ok "Basic Auth password set"
-        else
-            warn "Continuing without Basic Auth. The Gophish login screen is still behind the secret admin path and its own auth, but consider setting ADMIN_PASS_HASH later."
-        fi
+fi
+if [ -z "${ADMIN_PASS_HASH:-}" ]; then
+    warn "ADMIN_PASS_HASH is empty — Caddy's Basic Auth layer in front of the admin dashboard will be DISABLED."
+    read -rp "Set a Basic Auth password now? [Y/n] " ANSWER
+    if [ "${ANSWER:-Y}" != "n" ] && [ "${ANSWER:-Y}" != "N" ]; then
+        read -rsp "Password: " ADMIN_PASSWORD; echo
+        HASH=$(docker run --rm caddy caddy hash-password --plaintext "$ADMIN_PASSWORD")
+        set_env ADMIN_PASS_HASH "$HASH"
+        ok "Basic Auth password set"
+    else
+        warn "Continuing without Basic Auth. The Gophish login screen is still behind the secret admin path and its own auth, but consider setting ADMIN_PASS_HASH later."
     fi
 fi
 
@@ -142,11 +141,7 @@ set -a; source .env; set +a
 
 echo
 ok "Vantage is up."
-if [ "$VANTAGE_ENV" = "PROD" ]; then
-    echo "  URL:      https://${DOMAIN}/${ADMIN_PATH_SECRET}"
-else
-    echo "  URL:      http://localhost:${HOST_ADMIN_PORT:-3333}/"
-fi
+echo "  URL:      https://${ADMIN_DOMAIN}/${ADMIN_PATH_SECRET}"
 echo "  Username: admin"
 echo "  Password: ${GOPHISH_INITIAL_ADMIN_PASSWORD}"
 echo
