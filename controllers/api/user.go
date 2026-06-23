@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	"github.com/yusufarbc/vantage/auth"
 	ctx "github.com/yusufarbc/vantage/context"
 	log "github.com/yusufarbc/vantage/logger"
@@ -57,7 +55,7 @@ func (ur *userRequest) Validate(existingUser *models.User) error {
 		}
 	}
 	// If we have an error which is not simply indicating that no user was found, report it
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != nil && err != models.ErrRecordNotFound {
 		return err
 	}
 	return nil
@@ -126,7 +124,11 @@ func (as *Server) Users(w http.ResponseWriter, r *http.Request) {
 // may only view or delete their own account.
 func (as *Server) User(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	// If the user doesn't have ModifySystem permissions, we need to verify
 	// that they're only taking action on their account.
 	currentUser := ctx.Get(r, "user").(models.User)

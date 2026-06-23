@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/csrf"
+	csrf "filippo.io/csrf/gorilla"
 	ctx "github.com/yusufarbc/vantage/context"
 	"github.com/yusufarbc/vantage/models"
 )

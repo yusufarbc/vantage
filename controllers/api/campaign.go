@@ -3,10 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	ctx "github.com/yusufarbc/vantage/context"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
@@ -20,6 +18,8 @@ func (as *Server) Campaigns(w http.ResponseWriter, r *http.Request) {
 		cs, err := models.GetCampaigns(ctx.Get(r, "user_id").(int64))
 		if err != nil {
 			log.Error(err)
+			JSONResponse(w, models.Response{Success: false, Message: "Error retrieving campaigns"}, http.StatusInternalServerError)
+			return
 		}
 		JSONResponse(w, cs, http.StatusOK)
 	//POST: Create a new campaign and return it as JSON
@@ -63,7 +63,11 @@ func (as *Server) CampaignsSummary(w http.ResponseWriter, r *http.Request) {
 // valid, APICampaign returns null.
 func (as *Server) Campaign(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	c, err := models.GetCampaign(id, ctx.Get(r, "user_id").(int64))
 	if err != nil {
 		log.Error(err)
@@ -87,7 +91,11 @@ func (as *Server) Campaign(w http.ResponseWriter, r *http.Request) {
 // significantly reduce the information returned.
 func (as *Server) CampaignResults(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	cr, err := models.GetCampaignResults(id, ctx.Get(r, "user_id").(int64))
 	if err != nil {
 		log.Error(err)
@@ -103,12 +111,16 @@ func (as *Server) CampaignResults(w http.ResponseWriter, r *http.Request) {
 // CampaignSummary returns the summary for a given campaign.
 func (as *Server) CampaignSummary(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	switch {
 	case r.Method == "GET":
 		cs, err := models.GetCampaignSummary(id, ctx.Get(r, "user_id").(int64))
 		if err != nil {
-			if err == gorm.ErrRecordNotFound {
+			if err == models.ErrRecordNotFound {
 				JSONResponse(w, models.Response{Success: false, Message: "Campaign not found"}, http.StatusNotFound)
 			} else {
 				JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
@@ -124,7 +136,11 @@ func (as *Server) CampaignSummary(w http.ResponseWriter, r *http.Request) {
 // Future phishing emails clicked will return a simple "404" page.
 func (as *Server) CampaignComplete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	switch {
 	case r.Method == "GET":
 		err := models.CompleteCampaign(id, ctx.Get(r, "user_id").(int64))

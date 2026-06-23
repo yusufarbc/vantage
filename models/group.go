@@ -132,12 +132,34 @@ func GetGroupSummaries(uid int64) (GroupSummaries, error) {
 		log.Error(err)
 		return gs, err
 	}
+	if len(gs.Groups) == 0 {
+		gs.Total = 0
+		return gs, nil
+	}
+	groupIds := make([]int64, len(gs.Groups))
 	for i := range gs.Groups {
-		query = db.Table("group_targets").Where("group_id=?", gs.Groups[i].Id)
-		err = query.Count(&gs.Groups[i].NumTargets).Error
-		if err != nil {
-			return gs, err
-		}
+		groupIds[i] = gs.Groups[i].Id
+	}
+	// A single grouped count query instead of one COUNT per group avoids an
+	// N+1 query pattern when a user has many groups.
+	counts := []struct {
+		GroupId    int64
+		NumTargets int64
+	}{}
+	err = db.Table("group_targets").
+		Select("group_id, count(*) as num_targets").
+		Where("group_id in (?)", groupIds).
+		Group("group_id").
+		Scan(&counts).Error
+	if err != nil {
+		return gs, err
+	}
+	countsByGroupId := make(map[int64]int64, len(counts))
+	for _, c := range counts {
+		countsByGroupId[c.GroupId] = c.NumTargets
+	}
+	for i := range gs.Groups {
+		gs.Groups[i].NumTargets = countsByGroupId[gs.Groups[i].Id]
 	}
 	gs.Total = int64(len(gs.Groups))
 	return gs, nil
@@ -319,7 +341,10 @@ func insertTargetIntoGroup(tx *gorm.DB, t Target, gid int64) error {
 		}).Error("Invalid email")
 		return err
 	}
-	err := tx.Where(t).FirstOrCreate(&t).Error
+	// Match on all recipient fields, using explicit placeholders rather than
+	// gorm's Where(struct) form, so the query is unambiguously parameterized.
+	err := tx.Where("email = ? AND first_name = ? AND last_name = ? AND position = ?",
+		t.Email, t.FirstName, t.LastName, t.Position).FirstOrCreate(&t).Error
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"email": t.Email,

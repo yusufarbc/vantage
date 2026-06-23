@@ -62,7 +62,11 @@ func callNotify(msg string) {
 
 func sendSlack(msg string) {
 	payload := map[string]string{"text": msg}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		log.Errorf("slack notification marshal error: %v", err)
+		return
+	}
 	resp, err := http.Post(conf.SlackWebhook, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Errorf("slack notification error: %v", err)
@@ -78,7 +82,11 @@ func sendTelegram(msg string) {
 		"text":       msg,
 		"parse_mode": "Markdown",
 	}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		log.Errorf("telegram notification marshal error: %v", err)
+		return
+	}
 	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Errorf("telegram notification error: %v", err)

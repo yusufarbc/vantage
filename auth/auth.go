@@ -35,10 +35,15 @@ var ErrEmptyPassword = errors.New("No password provided")
 var ErrPasswordTooShort = fmt.Errorf("Password must be at least %d characters", MinPasswordLength)
 
 // GenerateSecureKey returns the hex representation of key generated from n
-// random bytes
+// random bytes.
+//
+// It panics if the system's CSPRNG cannot be read, since silently
+// continuing would produce a weak or all-zero key.
 func GenerateSecureKey(n int) string {
 	k := make([]byte, n)
-	io.ReadFull(rand.Reader, k)
+	if _, err := io.ReadFull(rand.Reader, k); err != nil {
+		panic(fmt.Sprintf("auth: failed to read from CSPRNG: %v", err))
+	}
 	return fmt.Sprintf("%x", k)
 }
 

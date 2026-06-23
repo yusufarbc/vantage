@@ -15,6 +15,10 @@ import (
 	"github.com/yusufarbc/vantage/pkg/network"
 )
 
+// defaultStressConcurrency is the connection concurrency used for the
+// bombardier and hey stress-test tools when not otherwise configurable.
+const defaultStressConcurrency = "32"
+
 // StressRequest defines infrastructure stress-test parameters.
 type StressRequest struct {
 	Tool      string `json:"tool"`
@@ -208,7 +212,7 @@ func buildStressPipeline(ctx context.Context, tool string, req StressRequest) []
 	switch tool {
 	case "bombardier":
 		cmds = []*exec.Cmd{
-			exec.CommandContext(ctx, "bombardier", "-d", req.Duration, "-r", strconv.Itoa(req.Rate), "-c", "32", req.TargetURL),
+			exec.CommandContext(ctx, "bombardier", "-d", req.Duration, "-r", strconv.Itoa(req.Rate), "-c", defaultStressConcurrency, req.TargetURL),
 		}
 	case "hey":
 		// Approximate by requests = rate * durationSeconds
@@ -218,7 +222,7 @@ func buildStressPipeline(ctx context.Context, tool string, req StressRequest) []
 		}
 		requests := req.Rate * durationSeconds
 		cmds = []*exec.Cmd{
-			exec.CommandContext(ctx, "hey", "-n", strconv.Itoa(requests), "-c", "32", req.TargetURL),
+			exec.CommandContext(ctx, "hey", "-n", strconv.Itoa(requests), "-c", defaultStressConcurrency, req.TargetURL),
 		}
 	default:
 		attack := exec.CommandContext(ctx, "vegeta", "attack", "-duration="+req.Duration, "-rate="+strconv.Itoa(req.Rate))

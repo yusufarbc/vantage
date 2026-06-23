@@ -53,15 +53,30 @@ func attemptLogin(t *testing.T, ctx *testContext, client *http.Client, username,
 	return resp
 }
 
+// TestLoginCSRF verifies that a cross-origin POST to /login is rejected.
+//
+// Our CSRF protection (filippo.io/csrf/gorilla, swapped in for
+// github.com/gorilla/csrf to fix an unpatched TrustedOrigins CVE) enforces
+// same-origin requests via Fetch metadata rather than tokens: requests
+// lacking both Sec-Fetch-Site and Origin headers are treated as non-browser
+// and allowed, since CSRF is fundamentally a browser issue. So to exercise
+// the actual protection, this sends an Origin header that doesn't match the
+// request's own host, simulating a form on an attacker's site submitting to
+// this endpoint.
 func TestLoginCSRF(t *testing.T) {
 	ctx := setupTest(t)
 	defer tearDown(t, ctx)
-	resp, err := http.PostForm(fmt.Sprintf("%s/login", ctx.adminServer.URL),
-		url.Values{
-			"username": {"admin"},
-			"password": {"gophish"},
-		})
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", ctx.adminServer.URL), strings.NewReader(url.Values{
+		"username": {"admin"},
+		"password": {"gophish"},
+	}.Encode()))
+	if err != nil {
+		t.Fatalf("error creating new /login request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", "https://evil.example.com")
 
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("error requesting the /login endpoint: %v", err)
 	}

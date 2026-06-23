@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
 	log "github.com/yusufarbc/vantage/logger"
@@ -42,7 +41,11 @@ func (as *Server) Webhooks(w http.ResponseWriter, r *http.Request) {
 // Webhook returns details of a single webhook specified by "id" parameter
 func (as *Server) Webhook(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	wh, err := models.GetWebhook(id)
 	if err != nil {
 		JSONResponse(w, models.Response{Success: false, Message: "Webhook not found"}, http.StatusNotFound)
@@ -87,7 +90,11 @@ func (as *Server) ValidateWebhook(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == "POST":
 		vars := mux.Vars(r)
-		id, _ := strconv.ParseInt(vars["id"], 0, 64)
+		id, ok := idFromVars(vars)
+		if !ok {
+			writeInvalidIDResponse(w)
+			return
+		}
 		wh, err := models.GetWebhook(id)
 		if err != nil {
 			log.Error(err)

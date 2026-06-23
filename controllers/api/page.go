@@ -3,11 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	ctx "github.com/yusufarbc/vantage/context"
 	log "github.com/yusufarbc/vantage/logger"
 	"github.com/yusufarbc/vantage/models"
@@ -20,6 +18,8 @@ func (as *Server) Pages(w http.ResponseWriter, r *http.Request) {
 		ps, err := models.GetPages(ctx.Get(r, "user_id").(int64))
 		if err != nil {
 			log.Error(err)
+			JSONResponse(w, models.Response{Success: false, Message: "Error retrieving pages"}, http.StatusInternalServerError)
+			return
 		}
 		JSONResponse(w, ps, http.StatusOK)
 	//POST: Create a new page and return it as JSON
@@ -33,7 +33,7 @@ func (as *Server) Pages(w http.ResponseWriter, r *http.Request) {
 		}
 		// Check to make sure the name is unique
 		_, err = models.GetPageByName(p.Name, ctx.Get(r, "user_id").(int64))
-		if err != gorm.ErrRecordNotFound {
+		if err != models.ErrRecordNotFound {
 			JSONResponse(w, models.Response{Success: false, Message: "Page name already in use"}, http.StatusConflict)
 			log.Error(err)
 			return
@@ -53,7 +53,11 @@ func (as *Server) Pages(w http.ResponseWriter, r *http.Request) {
 // of a Page object
 func (as *Server) Page(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	id, ok := idFromVars(vars)
+	if !ok {
+		writeInvalidIDResponse(w)
+		return
+	}
 	p, err := models.GetPage(id, ctx.Get(r, "user_id").(int64))
 	if err != nil {
 		JSONResponse(w, models.Response{Success: false, Message: "Page not found"}, http.StatusNotFound)
@@ -74,6 +78,8 @@ func (as *Server) Page(w http.ResponseWriter, r *http.Request) {
 		err = json.NewDecoder(r.Body).Decode(&p)
 		if err != nil {
 			log.Error(err)
+			JSONResponse(w, models.Response{Success: false, Message: "Invalid request"}, http.StatusBadRequest)
+			return
 		}
 		if p.Id != id {
 			JSONResponse(w, models.Response{Success: false, Message: "/:id and /:page_id mismatch"}, http.StatusBadRequest)

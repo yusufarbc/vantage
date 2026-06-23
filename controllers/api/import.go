@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jordan-wright/email"
@@ -16,6 +18,11 @@ import (
 	"github.com/yusufarbc/vantage/models"
 	"github.com/yusufarbc/vantage/util"
 )
+
+// importSiteTimeout bounds how long ImportSite will wait on a target site
+// before giving up, preventing slow/unresponsive targets from tying up a
+// request-handler goroutine indefinitely.
+const importSiteTimeout = 15 * time.Second
 
 type cloneRequest struct {
 	URL              string `json:"url"`
@@ -117,11 +124,15 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 	restrictedDialer := dialer.Dialer()
 	tr := &http.Transport{
 		DialContext: restrictedDialer.DialContext,
+		// InsecureSkipVerify is intentional: this feature clones engagement
+		// targets that often present self-signed or otherwise untrusted
+		// certificates in test/staging environments. The fetched URL is
+		// supplied by an authenticated admin, not an untrusted caller.
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{Transport: tr, Timeout: importSiteTimeout}
 	resp, err := client.Get(cr.URL)
 	if err != nil {
 		JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
@@ -135,7 +146,7 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 	}
 	// Assuming we don't want to include resources, we'll need a base href
 	if d.Find("head base").Length() == 0 {
-		d.Find("head").PrependHtml(fmt.Sprintf("<base href=\"%s\">", cr.URL))
+		d.Find("head").PrependHtml(fmt.Sprintf("<base href=\"%s\">", html.EscapeString(cr.URL)))
 	}
 	forms := d.Find("form")
 	forms.Each(func(i int, f *goquery.Selection) {
@@ -145,7 +156,7 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(url, "http") {
 			url = fmt.Sprintf("%s%s", cr.URL, url)
 		}
-		f.PrependHtml(fmt.Sprintf("<input type=\"hidden\" name=\"__original_url\" value=\"%s\"/>", url))
+		f.PrependHtml(fmt.Sprintf("<input type=\"hidden\" name=\"__original_url\" value=\"%s\"/>", html.EscapeString(url)))
 	})
 	h, err := d.Html()
 	if err != nil {
