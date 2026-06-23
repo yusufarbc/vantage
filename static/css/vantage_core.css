@@ -60,6 +60,8 @@
 html {
     /* Fluid base size: smaller on phones, full size from tablet up */
     font-size: clamp(15px, 0.9vw + 11px, 17px);
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
 }
 
 body {

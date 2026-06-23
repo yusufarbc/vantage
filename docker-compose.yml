@@ -206,7 +206,6 @@ services:
       - vantage-net
 
     environment:
-      VANTAGE_ENV: "${VANTAGE_ENV:-TEST}"
       CADDY_EMAIL: "${CADDY_EMAIL:-admin@vantage.local}"
       ADMIN_DOMAIN: "${ADMIN_DOMAIN:-localhost}"
       PHISH_DOMAIN: "${DOMAIN:-localhost}"

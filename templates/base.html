@@ -144,13 +144,6 @@
                     <h1 class="text-lg font-black tracking-tight text-vantage-text uppercase italic">
                         <span class="text-vantage-accent">V</span>antage <span class="text-vantage-text-dim/40">|</span> <span id="tab-title" class="text-vantage-text/80">{{ .Title }}</span>
                     </h1>
-                    <!-- Production Environment Badge -->
-                    <span id="prod-env-badge"
-                          class="hidden items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border"
-                          style="background:rgba(248,81,73,0.12);border-color:rgba(248,81,73,0.4);color:#f85149;">
-                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                        PROD
-                    </span>
                 </div>
                 <div class="flex items-center gap-6">
                     <!-- Theme Toggle -->
@@ -247,20 +240,6 @@
     {{template "scripts" .}}
 
     <script>
-    // ── Production Environment Badge ────────────────────────────────────────
-    // Show badge only when running behind Caddy (X-Forwarded-Proto: https)
-    // or when the explicit VANTAGE_ENV cookie/header is set by deploy.sh.
-    (function () {
-        var isProd = window.location.protocol === 'https:'
-            || document.cookie.split(';').some(function(c) {
-                return c.trim().startsWith('vantage_env=production');
-            });
-        if (isProd) {
-            var badge = document.getElementById('prod-env-badge');
-            if (badge) badge.classList.replace('hidden', 'flex');
-        }
-    })();
-
     // ── Global Toast Dispatcher ──────────────────────────────────────────
     window.showToast = function(messageOrTitle, typeOrMessage, typeIfThree) {
         var message = messageOrTitle;
