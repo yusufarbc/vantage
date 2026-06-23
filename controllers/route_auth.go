@@ -63,6 +63,13 @@ func (as *AdminServer) Settings(w http.ResponseWriter, r *http.Request) {
 
 func (as *AdminServer) nextOrIndex(w http.ResponseWriter, r *http.Request) {
 	next := "/"
+	allowedNext := map[string]struct{}{
+		"/":        {},
+		"/settings": {},
+		"/users":   {},
+		"/agents":  {},
+		"/streams": {},
+	}
 	parsed, err := url.Parse(r.FormValue("next"))
 	if err == nil {
 		path := parsed.EscapedPath()
@@ -72,8 +79,12 @@ func (as *AdminServer) nextOrIndex(w http.ResponseWriter, r *http.Request) {
 		// URL (e.g. "//evil.com") and would otherwise let an off-site
 		// redirect slip through despite only the path component being used.
 		path = strings.TrimLeft(path, "/\\")
+		candidate := "/"
 		if path != "" {
-			next = "/" + path
+			candidate = "/" + path
+		}
+		if _, ok := allowedNext[candidate]; ok {
+			next = candidate
 		}
 	}
 	http.Redirect(w, r, next, http.StatusFound)
